@@ -1,0 +1,20 @@
+body { 
+  margin: 0; 
+  overflow: hidden; 
+  background: #000; 
+  font-family: sans-serif; 
+}
+
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: white;
+  z-index: 10;
+}
+
+button {
+  padding: 6px 12px;
+  margin-right: 5px;
+  cursor: pointer;
+}
