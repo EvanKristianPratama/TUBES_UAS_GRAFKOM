@@ -1,122 +1,150 @@
-// Import libraries Three.js
-import * as THREE from '/node_modules/three/build/three.module.js'
-import { OrbitControls } from '/node_modules/three/examples/jsm/controls/OrbitControls.js'
+// ================= IMPORT THREE.JS =================
+import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 // ================= SETUP SCENE =================
-// Membuat scene
-var scene = new THREE.Scene()
-scene.background = new THREE.Color(0x0a0a0a)
+const scene = new THREE.Scene()
+// ❌ JANGAN pakai background warna
+// scene.background = new THREE.Color(0x0a0a0a)
 
-// Membuat camera
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
+// ================= CAMERA =================
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+)
 camera.position.set(0, 3, 6)
 
-// Membuat renderer
-var renderer = new THREE.WebGLRenderer({ antialias: true })
+// ================= RENDERER (TRANSPARAN) =================
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true // 🔥 PENTING
+})
 renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setClearColor(0x000000, 0) // 🔥 TRANSPARAN
 document.body.appendChild(renderer.domElement)
 
-// Membuat controls
-var controls = new OrbitControls(camera, renderer.domElement)
+// ================= CONTROLS =================
+const controls = new OrbitControls(camera, renderer.domElement)
 controls.enablePan = false
 controls.enableZoom = false
 
-// Tambahkan grid
+// ================= GRID =================
 scene.add(new THREE.GridHelper(10, 10))
 
-// ================= MEMBUAT PLAYER =================
-var playerGeo = new THREE.DodecahedronGeometry(0.6)
-var playerMat = new THREE.MeshPhongMaterial({ color: 0x88aa00 })
-var player = new THREE.Mesh(playerGeo, playerMat)
-player.position.y = 0.6
+// ================= PLAYER (MOBIL) =================
+const player = new THREE.Group()
+
+// Body
+const body = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 0.3, 0.8),
+  new THREE.MeshPhongMaterial({ color: 0x88aa00 })
+)
+body.position.y = 0.4
+player.add(body)
+
+// Atap
+const roof = new THREE.Mesh(
+  new THREE.BoxGeometry(0.6, 0.3, 1),
+  new THREE.MeshPhongMaterial({ color: 0x666666 })
+)
+roof.position.set(0, 0.75, -0.2)
+player.add(roof)
+
+// Roda
+const wheelGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.2, 16)
+const wheelMat = new THREE.MeshPhongMaterial({ color: 0x000000 })
+
+function addWheel(x, z) {
+  const wheel = new THREE.Mesh(wheelGeo, wheelMat)
+  wheel.rotation.z = Math.PI / 2
+  wheel.position.set(x, 0.2, z)
+  player.add(wheel)
+}
+
+addWheel(-0.6, 0.7)
+addWheel(0.6, 0.7)
+addWheel(-0.6, -0.7)
+addWheel(0.6, -0.7)
+
+player.position.y = 0.2
 scene.add(player)
 
-// ================= MEMBUAT LAMPU =================
+// ================= LIGHT =================
 scene.add(new THREE.AmbientLight(0xffffff, 0.5))
-var light = new THREE.PointLight(0xffffff, 1)
+const light = new THREE.PointLight(0xffffff, 1)
 light.position.set(5, 5, 5)
 scene.add(light)
 
-// ================= VARIABEL GAME =================
-var obstacles = []
-var running = false
-var score = 0
-var highScore = localStorage.getItem('highScore') || 0
-var obstacleTimer = 0
+// ================= GAME VAR =================
+let obstacles = []
+let running = false
+let score = 0
+let obstacleTimer = 0
 
-// Tampilkan high score
+let highScore = localStorage.getItem('highScore') || 0
 document.getElementById('highScore').textContent = highScore
 
-// ================= FUNGSI SPAWN OBSTACLE =================
+// ================= SPAWN OBSTACLE =================
 function spawnObstacle() {
-  var geo = new THREE.BoxGeometry(0.8, 0.8, 0.8)
-  var mat = new THREE.MeshStandardMaterial({ color: 0xff3333 })
-  var obs = new THREE.Mesh(geo, mat)
+  const obs = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.8, 0.8),
+    new THREE.MeshStandardMaterial({ color: 0xff3333 })
+  )
 
-  obs.position.x = (Math.random() - 0.5) * 8
-  obs.position.y = 0.4
-  obs.position.z = -10
+  obs.position.set(
+    (Math.random() - 0.5) * 8,
+    0.4,
+    -10
+  )
 
   scene.add(obs)
   obstacles.push(obs)
 }
 
-// ================= KONTROL KEYBOARD =================
-window.addEventListener('keydown', function(e) {
+// ================= KEYBOARD =================
+window.addEventListener('keydown', e => {
   if (!running) return
-  
-  if (e.key === 'a') {
-    player.position.x -= 0.3
-  }
-  if (e.key === 'd') {
-    player.position.x += 0.3
-  }
-  if (e.key === 'w') {
-    player.position.z -= 0.3
-  }
-  if (e.key === 's') {
-    player.position.z += 0.3
-  }
+
+  if (e.key === 'a') player.position.x -= 0.3
+  if (e.key === 'd') player.position.x += 0.3
+  if (e.key === 'w') player.position.z -= 0.3
+  if (e.key === 's') player.position.z += 0.3
 })
 
-// ================= TOMBOL START =================
-document.getElementById('startBtn').onclick = function() {
+// ================= BUTTON =================
+document.getElementById('startBtn').onclick = () => {
   resetGame()
   running = true
 }
 
-// ================= TOMBOL STOP =================
-document.getElementById('stopBtn').onclick = function() {
+document.getElementById('stopBtn').onclick = () => {
   running = false
 }
 
-// ================= FUNGSI GAME LOOP =================
+// ================= GAME LOOP =================
 function animate() {
   requestAnimationFrame(animate)
 
   if (running) {
-    // Tambah score
     score++
     document.getElementById('score').textContent = score
 
-    // Timer untuk spawn obstacle
     obstacleTimer++
     if (obstacleTimer > 60) {
       spawnObstacle()
       obstacleTimer = 0
     }
 
-    // Update setiap obstacle
-    for (var i = 0; i < obstacles.length; i++) {
-      var obs = obstacles[i]
+    for (let i = 0; i < obstacles.length; i++) {
+      const obs = obstacles[i]
       obs.position.z += 0.15
 
-      // Cek tabrakan
       if (obs.position.distanceTo(player.position) < 0.8) {
         gameOver()
       }
 
-      // Hapus obstacle kalau sudah lewat
       if (obs.position.z > 5) {
         scene.remove(obs)
         obstacles.splice(i, 1)
@@ -130,11 +158,10 @@ function animate() {
 
 animate()
 
-// ================= FUNGSI GAME OVER =================
+// ================= GAME OVER =================
 function gameOver() {
   running = false
 
-  // Update high score
   if (score > highScore) {
     highScore = score
     localStorage.setItem('highScore', highScore)
@@ -144,24 +171,17 @@ function gameOver() {
   alert('Game Over!')
 }
 
-// ================= FUNGSI RESET GAME =================
+// ================= RESET =================
 function resetGame() {
-  // Hapus semua obstacle
-  for (var i = 0; i < obstacles.length; i++) {
-    scene.remove(obstacles[i])
-  }
+  obstacles.forEach(o => scene.remove(o))
   obstacles = []
-  
-  // Reset score
   score = 0
   document.getElementById('score').textContent = 0
-  
-  // Reset posisi player
-  player.position.set(0, 0.6, 0)
+  player.position.set(0, 0.2, 0)
 }
 
-// ================= RESIZE WINDOW =================
-window.addEventListener('resize', function() {
+// ================= RESIZE =================
+window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
