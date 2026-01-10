@@ -1,21 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>2372047_2372027_2372004</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <div id="ui">
-    <button id="startBtn">Start</button>
-    <button id="stopBtn">Stop</button>
-    <div>Score: <span id="score">0</span></div>
-    <div>High Score: <span id="highScore">0</span></div>
+  <div id="cockpit">
+    <div id="window-frame"></div>
+    <div id="dashboard">
+      <!-- Left Panel: Status -->
+      <div id="panel-left" class="panel">
+        <div class="label">SYSTEM STATUS</div>
+        <div class="row">
+          <span>SCORE</span>
+          <span id="score">0</span>
+        </div>
+        <div class="row">
+          <span>HIGH SCORE</span>
+          <span id="highScore">0</span>
+        </div>
+      </div>
+
+      <!-- Center Panel: Radar/Deco -->
+      <div id="panel-center" class="panel">
+        <div id="radar"></div>
+      </div>
+
+      <!-- Right Panel: Controls -->
+      <div id="panel-right" class="panel">
+        <div class="label">MAIN CONTROLS</div>
+        <div class="controls-row">
+          <button id="startBtn">ENGAGE</button>
+          <button id="stopBtn">ABORT</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="main.js"></script>
 testing
 </body>
+
 </html>
