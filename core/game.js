@@ -18,6 +18,8 @@ export var GameState = {
     // --------------------------------------------------------
     score: 0,           // Skor saat ini
     highScore: 0,       // Skor tertinggi
+    highScoreName: '',  // Nama pemegang skor tertinggi
+    playerName: '',     // Nama pemain saat ini
     isPlaying: false,   // Apakah sedang bermain?
     
     // --------------------------------------------------------
@@ -26,8 +28,8 @@ export var GameState = {
     // Dipanggil sekali saat game dimulai
     init: function() {
         // Ambil high score dari localStorage
-        // localStorage = penyimpanan browser yang permanen
         var savedScore = localStorage.getItem('spaceRunnerHighScore');
+        var savedName = localStorage.getItem('spaceRunnerHighScoreName');
         
         // Jika ada skor tersimpan, gunakan; jika tidak, 0
         if (savedScore !== null) {
@@ -36,8 +38,22 @@ export var GameState = {
             this.highScore = 0;
         }
         
+        // Ambil nama pemegang rekor
+        if (savedName !== null) {
+            this.highScoreName = savedName;
+        } else {
+            this.highScoreName = '';
+        }
+        
         // Reset skor ke 0
         this.score = 0;
+    },
+    
+    // --------------------------------------------------------
+    // METHOD: SET NAMA PEMAIN
+    // --------------------------------------------------------
+    setPlayerName: function(name) {
+        this.playerName = name || 'Player';
     },
     
     // --------------------------------------------------------
@@ -64,11 +80,15 @@ export var GameState = {
         if (this.score > this.highScore) {
             // Update high score
             this.highScore = this.score;
+            this.highScoreName = this.playerName;
             
             // Simpan ke localStorage
-            // localStorage hanya bisa menyimpan string
             localStorage.setItem('spaceRunnerHighScore', this.highScore.toString());
+            localStorage.setItem('spaceRunnerHighScoreName', this.highScoreName);
+            
+            return true;  // Rekor baru!
         }
+        return false;
     }
 };
 
@@ -83,20 +103,26 @@ export var UIManager = {
     scoreElement: null,      // Elemen untuk menampilkan skor
     highScoreElement: null,  // Elemen untuk menampilkan high score
     controlsElement: null,   // Container tombol start/stop
+    bestPlayerName: null,    // Nama pemegang rekor
     
     // --------------------------------------------------------
     // METHOD: INISIALISASI UI
     // --------------------------------------------------------
     init: function() {
         // Ambil referensi elemen dari HTML menggunakan ID
-        // document.getElementById('id') mencari elemen dengan id tertentu
         this.scoreElement = document.getElementById('score');
         this.highScoreElement = document.getElementById('highScore');
         this.controlsElement = document.querySelector('.controls');
+        this.bestPlayerName = document.getElementById('bestPlayerName');
         
         // Tampilkan high score yang tersimpan
         if (this.highScoreElement) {
             this.highScoreElement.textContent = GameState.highScore;
+        }
+        
+        // Tampilkan nama pemegang rekor
+        if (this.bestPlayerName && GameState.highScoreName) {
+            this.bestPlayerName.textContent = 'by ' + GameState.highScoreName;
         }
     },
     
@@ -112,6 +138,15 @@ export var UIManager = {
         // Update teks high score jika elemen ada
         if (this.highScoreElement) {
             this.highScoreElement.textContent = highScore;
+        }
+    },
+    
+    // --------------------------------------------------------
+    // METHOD: UPDATE NAMA PEMEGANG REKOR
+    // --------------------------------------------------------
+    updateBestPlayerName: function(name) {
+        if (this.bestPlayerName && name) {
+            this.bestPlayerName.textContent = 'by ' + name;
         }
     },
     

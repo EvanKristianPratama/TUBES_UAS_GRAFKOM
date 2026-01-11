@@ -20,6 +20,15 @@ import { ObstacleManager } from './modules/obstacle.js'; // Manager meteor
 import { setupBackground, updateBackground } from './modules/background.js'; // Latar belakang
 import { GameState, UIManager, InputHandler } from './core/game.js'; // Logic game
 
+// Import Firebase untuk menyimpan skor online
+import { 
+    initFirebase, 
+    saveScoreToFirebase, 
+    getHighScoreFromFirebase,
+    isNewHighScore,
+    listenToHighScore 
+} from './core/firebase.js';
+
 // ------------------------------------------------------------
 // SETUP SCENE (TEMPAT 3D)
 // ------------------------------------------------------------
@@ -167,6 +176,38 @@ UIManager.init();
 InputHandler.init();
 
 // ------------------------------------------------------------
+// INISIALISASI FIREBASE
+// ------------------------------------------------------------
+// Inisialisasi Firebase dan load high score dari cloud
+initFirebase();
+
+// Load high score dari Firebase saat game dimulai
+loadHighScoreFromCloud();
+
+// Listen perubahan high score secara realtime
+listenToHighScore(function(highScoreData) {
+    if (highScoreData) {
+        // Update UI dengan high score dari Firebase
+        GameState.highScore = highScoreData.score;
+        GameState.highScoreName = highScoreData.name;
+        UIManager.updateHighScore(highScoreData.score);
+        UIManager.updateBestPlayerName(highScoreData.name);
+    }
+});
+
+// Fungsi untuk load high score dari cloud
+async function loadHighScoreFromCloud() {
+    var highScoreData = await getHighScoreFromFirebase();
+    if (highScoreData) {
+        GameState.highScore = highScoreData.score;
+        GameState.highScoreName = highScoreData.name;
+        UIManager.updateHighScore(highScoreData.score);
+        UIManager.updateBestPlayerName(highScoreData.name);
+        console.log('☁️ High score dari cloud:', highScoreData.score, 'by', highScoreData.name);
+    }
+}
+
+// ------------------------------------------------------------
 // VARIABEL GAME
 // ------------------------------------------------------------
 var isGameRunning = false;  // Apakah game sedang berjalan?
@@ -186,6 +227,12 @@ var levelSpeeds = {
 // FUNGSI UNTUK MEMULAI GAME
 // ------------------------------------------------------------
 function startGame() {
+    // Ambil nama pemain dari input
+    var nameInput = document.getElementById('playerName');
+    var playerName = nameInput ? nameInput.value.trim() : 'Player';
+    if (!playerName) playerName = 'Player';
+    GameState.setPlayerName(playerName);
+    
     // Set flag game berjalan
     isGameRunning = true;
     
@@ -205,7 +252,7 @@ function startGame() {
     UIManager.hideControls();
     
     // Tampilkan pesan di console (untuk debugging)
-    console.log('Game dimulai!');
+    console.log('Game dimulai! Player:', playerName);
 }
 
 // ------------------------------------------------------------
@@ -227,32 +274,46 @@ function stopGame() {
 // ------------------------------------------------------------
 // FUNGSI GAME OVER
 // ------------------------------------------------------------
-function gameOver() {
+async function gameOver() {
     // Hentikan game
     isGameRunning = false;
     
-    // Cek apakah skor baru adalah rekor baru
-    var isNewRecord = GameState.score > GameState.highScore;
+    // Cek apakah skor baru adalah rekor baru (dari Firebase)
+    var isNewRecord = await isNewHighScore(GameState.score);
     
-    // Simpan skor tertinggi jika lebih tinggi dari sebelumnya
-    GameState.saveHighScore();
+    // Simpan skor ke Firebase
+    await saveScoreToFirebase(GameState.playerName, GameState.score, selectedLevel);
+    
+    // Update local high score juga
+    if (isNewRecord) {
+        GameState.highScore = GameState.score;
+        GameState.highScoreName = GameState.playerName;
+        UIManager.updateHighScore(GameState.score);
+        UIManager.updateBestPlayerName(GameState.playerName);
+    }
     
     // Hapus semua meteor
     obstacleManager.clearAll();
     
     // Tampilkan modal game over
-    showGameOverModal(GameState.score, isNewRecord);
+    showGameOverModal(GameState.score, isNewRecord, GameState.playerName);
     
-    console.log('Game Over! Skor:', GameState.score);
+    console.log('Game Over! Skor:', GameState.score, '| Rekor Baru:', isNewRecord);
 }
 
 // ------------------------------------------------------------
 // FUNGSI TAMPILKAN MODAL GAME OVER
 // ------------------------------------------------------------
-function showGameOverModal(score, isNewRecord) {
+function showGameOverModal(score, isNewRecord, playerName) {
     var modal = document.getElementById('gameOverModal');
     var finalScore = document.getElementById('finalScore');
     var newRecordText = document.getElementById('newRecord');
+    var gameOverName = document.getElementById('gameOverName');
+    
+    // Set nama pemain
+    if (gameOverName) {
+        gameOverName.textContent = playerName;
+    }
     
     // Set skor
     finalScore.textContent = score;
@@ -266,6 +327,44 @@ function showGameOverModal(score, isNewRecord) {
     
     // Tampilkan modal
     modal.classList.remove('hidden');
+}
+
+// ------------------------------------------------------------
+// FUNGSI SHARE SCORE
+// ------------------------------------------------------------
+function shareScore() {
+    var playerName = GameState.playerName;
+    var score = GameState.score;
+    var level = selectedLevel;
+    
+    var text = '🚀 ' + playerName + ' scored ' + score + ' points on Level ' + level + ' in Space Runner! Can you beat it? 🎮';
+    
+    // Cek apakah browser support Web Share API
+    if (navigator.share) {
+        navigator.share({
+            title: 'Space Runner Score',
+            text: text,
+            url: window.location.href
+        }).catch(function(err) {
+            // Fallback: copy to clipboard
+            copyToClipboard(text);
+        });
+    } else {
+        // Fallback: copy to clipboard
+        copyToClipboard(text);
+    }
+}
+
+// ------------------------------------------------------------
+// FUNGSI COPY TO CLIPBOARD
+// ------------------------------------------------------------
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        alert('Score copied to clipboard! 📋\n\n' + text);
+    }).catch(function() {
+        // Fallback untuk browser lama
+        prompt('Copy this text:', text);
+    });
 }
 
 // ------------------------------------------------------------
@@ -441,6 +540,16 @@ if (menuBtn) {
     menuBtn.addEventListener('click', function() {
         hideGameOverModal();
         UIManager.showControls();
+    });
+}
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL SHARE (DI MODAL)
+// ------------------------------------------------------------
+var shareBtn = document.getElementById('shareBtn');
+if (shareBtn) {
+    shareBtn.addEventListener('click', function() {
+        shareScore();
     });
 }
 

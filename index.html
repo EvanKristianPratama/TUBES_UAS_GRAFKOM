@@ -19,12 +19,19 @@
         <span id="score" class="value">0</span>
       </div>
       <div class="score-item best">
-        <span class="label">BEST</span>
+        <span class="label">🌐 WORLD BEST</span>
         <span id="highScore" class="value">0</span>
+        <span id="bestPlayerName" class="player-name"></span>
       </div>
     </div>
 
     <div class="controls">
+      <!-- Player Name Input -->
+      <div class="name-input-container">
+        <span class="name-label">PLAYER NAME</span>
+        <input type="text" id="playerName" class="name-input" placeholder="Enter your name" maxlength="15">
+      </div>
+      
       <!-- Level Selector -->
       <div class="level-selector">
         <span class="level-label">LEVEL</span>
@@ -51,6 +58,9 @@
     <div class="modal-content">
       <div class="modal-glow"></div>
       <h1 class="modal-title">GAME OVER</h1>
+      <div class="modal-player">
+        <span id="gameOverName" class="player-display"></span>
+      </div>
       <div class="modal-score">
         <span class="modal-label">YOUR SCORE</span>
         <span id="finalScore" class="modal-value">0</span>
@@ -58,6 +68,7 @@
       <div class="modal-highscore">
         <span id="newRecord" class="new-record hidden">🏆 NEW RECORD!</span>
       </div>
+      <button id="shareBtn" class="modal-btn share">📤 SHARE SCORE</button>
       <button id="restartBtn" class="modal-btn">↻ PLAY AGAIN</button>
       <button id="menuBtn" class="modal-btn secondary">⌂ MENU</button>
     </div>

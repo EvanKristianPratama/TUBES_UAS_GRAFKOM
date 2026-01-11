@@ -81,6 +81,14 @@ canvas {
   text-shadow: 0 0 20px var(--accent);
 }
 
+.player-name {
+  display: block;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 5px;
+  letter-spacing: 1px;
+}
+
 /* Controls - Center */
 .controls {
   display: flex;
@@ -88,6 +96,44 @@ canvas {
   gap: 15px;
   align-items: center;
   pointer-events: auto;
+}
+
+/* Player Name Input */
+.name-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.name-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 3px;
+}
+
+.name-input {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  padding: 12px 20px;
+  background: var(--glass);
+  border: 2px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--text);
+  text-align: center;
+  width: 200px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.name-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.name-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* Level Selector */
@@ -290,9 +336,19 @@ button {
     0 0 10px var(--accent),
     0 0 30px var(--accent),
     0 0 50px var(--accent);
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   letter-spacing: 5px;
   animation: pulse 1.5s infinite;
+}
+
+.modal-player {
+  margin-bottom: 15px;
+}
+
+.player-display {
+  font-size: 1.2rem;
+  color: var(--primary);
+  letter-spacing: 2px;
 }
 
 .modal-score {
@@ -370,5 +426,14 @@ button {
   border-color: var(--primary);
   color: var(--primary);
 }
-  }
+
+.modal-btn.share {
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+  box-shadow: 0 5px 30px rgba(37, 211, 102, 0.4);
+}
+
+.modal-btn.share:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 50px rgba(37, 211, 102, 0.6);
 }
