@@ -1,367 +1,299 @@
 // ============================================================
-//                    IMPORT DEPENDENCIES
+// MAIN.JS - FILE UTAMA PROGRAM
 // ============================================================
-import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { setupBackground, updateBackground } from './background.js'
-
-// ============================================================
-//                    THREE.JS SETUP
+// File ini adalah entry point (titik masuk) program
+// Semua inisialisasi dan game loop ada di sini
 // ============================================================
 
-// ----- Scene -----
-const scene = new THREE.Scene()
-setupBackground(scene)
+// ------------------------------------------------------------
+// IMPORT LIBRARY DAN MODUL
+// ------------------------------------------------------------
+// Import THREE.js untuk membuat grafik 3D
+import * as THREE from 'three';
 
-// ----- Camera -----
-function createCamera() {
-    const FOV = 80
-    const NEAR = 0.1
-    const FAR = 1000
-    const POSITION = { x: 0, y: 6, z: 9 }
+// Import OrbitControls untuk kontrol kamera (geser, zoom, rotasi)
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-    const camera = new THREE.PerspectiveCamera(
-        FOV,
-        window.innerWidth / window.innerHeight,
-        NEAR,
-        FAR
-    )
-    camera.position.set(POSITION.x, POSITION.y, POSITION.z)
-    return camera
-}
+// Import modul yang kita buat sendiri
+import { Spaceship } from './modules/spaceship.js';      // Pesawat pemain
+import { ObstacleManager } from './modules/obstacle.js'; // Manager meteor
+import { setupBackground, updateBackground } from './modules/background.js'; // Latar belakang
+import { GameState, UIManager, InputHandler } from './core/game.js'; // Logic game
 
-const camera = createCamera()
+// ------------------------------------------------------------
+// SETUP SCENE (TEMPAT 3D)
+// ------------------------------------------------------------
+// Scene adalah "dunia 3D" tempat semua objek berada
+var scene = new THREE.Scene();
 
-// ----- Renderer (Transparan) -----
-function createRenderer() {
-    const renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true
-    })
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.setClearColor(0x000000, 0)
-    return renderer
-}
+// Warna background hitam untuk efek luar angkasa
+scene.background = new THREE.Color(0x000011);
 
-const renderer = createRenderer()
-document.body.appendChild(renderer.domElement)
+// ------------------------------------------------------------
+// SETUP KAMERA
+// ------------------------------------------------------------
+// PerspectiveCamera = kamera dengan perspektif seperti mata manusia
+// Parameter: FOV (sudut pandang), aspect ratio, near plane, far plane
+var camera = new THREE.PerspectiveCamera(
+    75,                                      // FOV: 75 derajat
+    window.innerWidth / window.innerHeight,  // Aspect ratio layar
+    0.1,                                     // Jarak terdekat yang terlihat
+    1000                                     // Jarak terjauh yang terlihat
+);
 
-// ----- Controls -----
-function createControls(camera, domElement) {
-    const controls = new OrbitControls(camera, domElement)
-    controls.enablePan = false
-    controls.enableZoom = false
-    return controls
-}
+// Posisi kamera: di belakang dan atas pesawat
+camera.position.set(0, 3, 7);  // x=0 (tengah), y=3 (atas), z=7 (belakang)
+camera.lookAt(0, 0, 0);        // Kamera melihat ke titik pusat
 
-const controls = createControls(camera, renderer.domElement)
+// ------------------------------------------------------------
+// SETUP RENDERER (PENGGAMBAR)
+// ------------------------------------------------------------
+// Renderer bertugas menggambar scene ke layar
+var renderer = new THREE.WebGLRenderer({
+    antialias: true  // Menghaluskan garis-garis (anti jagged)
+});
 
-// ----- Grid Helper -----
-function createGrid() {
-    const SIZE = 10
-    const DIVISIONS = 10
-    return new THREE.GridHelper(SIZE, DIVISIONS)
-}
+// Ukuran renderer = ukuran layar penuh
+renderer.setSize(window.innerWidth, window.innerHeight);
 
-scene.add(createGrid())
+// Tambahkan canvas renderer ke halaman HTML
+document.body.appendChild(renderer.domElement);
 
-// ----- Lighting -----
-function createLighting() {
-    const AMBIENT_INTENSITY = 0.5
-    const POINT_INTENSITY = 1
-    const POINT_POSITION = { x: 5, y: 5, z: 5 }
+// ------------------------------------------------------------
+// SETUP KONTROL KAMERA (ORBIT CONTROLS)
+// ------------------------------------------------------------
+// OrbitControls memungkinkan user menggeser kamera
+var controls = new OrbitControls(camera, renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, AMBIENT_INTENSITY)
-    const pointLight = new THREE.PointLight(0xffffff, POINT_INTENSITY)
-    pointLight.position.set(POINT_POSITION.x, POINT_POSITION.y, POINT_POSITION.z)
+// Aktifkan pan (geser kamera) dengan batas
+controls.enablePan = true;
 
-    return { ambientLight, pointLight }
-}
+// Matikan rotate dan zoom (agar view tetap konsisten)
+controls.enableRotate = false;
+controls.enableZoom = false;
 
-const { ambientLight, pointLight } = createLighting()
-scene.add(ambientLight)
-scene.add(pointLight)
+// Batas pan kamera (agar tidak terlalu jauh)
+// minPan = batas minimum (kiri-bawah)
+// maxPan = batas maximum (kanan-atas)
+var minPan = new THREE.Vector3(-5, 0, -3);  // Batas kiri dan depan
+var maxPan = new THREE.Vector3(5, 6, 10);   // Batas kanan dan belakang
 
-// ============================================================
-//                    PLAYER (SPACESHIP)
-// ============================================================
-function createPlayer() {
-    const START_Y = 0.5
+// Event listener: saat kamera berubah, cek batasnya
+controls.addEventListener('change', function() {
+    // Clamp = membatasi nilai agar tidak keluar batas
+    // Jika target.x < -5, maka jadi -5
+    // Jika target.x > 5, maka jadi 5
+    controls.target.clamp(minPan, maxPan);
+});
 
-    const player = new THREE.Group()
+// ------------------------------------------------------------
+// SETUP PENCAHAYAAN
+// ------------------------------------------------------------
+// AmbientLight = cahaya merata dari segala arah (seperti cahaya siang)
+var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);  // Putih, intensitas 0.6
+scene.add(ambientLight);
 
-    // Badan utama (Fuselage)
-    const fuselage = new THREE.Mesh(
-        new THREE.ConeGeometry(0.2, 1.5, 32),
-        new THREE.MeshPhongMaterial({ color: 0xdddddd, shininess: 100 })
-    )
-    fuselage.rotation.x = -Math.PI / 2
-    player.add(fuselage)
+// DirectionalLight = cahaya dari satu arah (seperti matahari)
+var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);  // Putih, intensitas 0.8
+directionalLight.position.set(5, 10, 5);  // Posisi cahaya
+scene.add(directionalLight);
 
-    // Kokpit (Cockpit)
-    const cockpit = new THREE.Mesh(
-        new THREE.BoxGeometry(0.3, 0.3, 0.5),
-        new THREE.MeshPhongMaterial({ 
-            color: 0x88ccff, 
-            transparent: true, 
-            opacity: 0.8 
-        })
-    )
-    cockpit.position.set(0, 0.2, -0.2)
-    player.add(cockpit)
+// ------------------------------------------------------------
+// INISIALISASI GAME OBJECTS
+// ------------------------------------------------------------
+// Buat spaceship (pesawat pemain)
+var spaceship = new Spaceship(scene);
 
-    // Sayap (Wings)
-    const wings = new THREE.Mesh(
-        new THREE.BoxGeometry(2, 0.1, 0.5),
-        new THREE.MeshPhongMaterial({ color: 0xff3333 })
-    )
-    wings.position.set(0, 0, 0.2)
-    player.add(wings)
+// Buat obstacle manager (pengatur meteor)
+var obstacleManager = new ObstacleManager(scene);
 
-    // Mesin kiri & kanan (Engines)
-    const engineGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5)
-    const engineMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 })
+// Setup background (bintang-bintang)
+setupBackground(scene);
 
-    const leftEngine = new THREE.Mesh(engineGeometry, engineMaterial)
-    leftEngine.rotation.x = Math.PI / 2
-    leftEngine.position.set(-0.6, 0, 0.4)
-    player.add(leftEngine)
+// Inisialisasi game state (skor, status game, dll)
+GameState.init();
 
-    const rightEngine = new THREE.Mesh(engineGeometry, engineMaterial)
-    rightEngine.rotation.x = Math.PI / 2
-    rightEngine.position.set(0.6, 0, 0.4)
-    player.add(rightEngine)
+// Setup UI Manager (tampilan skor, tombol, dll)
+UIManager.init();
 
-    // Posisi awal player
-    player.position.y = START_Y
+// Setup input handler (kontrol keyboard)
+InputHandler.init();
 
-    return player
-}
+// ------------------------------------------------------------
+// VARIABEL GAME
+// ------------------------------------------------------------
+var isGameRunning = false;  // Apakah game sedang berjalan?
+var gameSpeed = 0.05;       // Kecepatan game (makin besar = makin cepat)
 
-const player = createPlayer()
-scene.add(player)
-
-// ============================================================
-//                    GAME STATE (Status Game)
-// ============================================================
-const gameState = {
-    obstacles: [],
-    isRunning: false,
-    score: 0,
-    obstacleTimer: 0,
-    highScore: parseInt(localStorage.getItem('highScore')) || 0
-}
-
-// Tampilkan high score saat halaman dimuat
-document.getElementById('highScore').textContent = gameState.highScore
-
-// ============================================================
-//                    OBSTACLE FUNCTIONS
-// ============================================================
-function spawnObstacle() {
-    const SIZE = 0.8
-    const SPAWN_RANGE_X = 8
-    const SPAWN_Y = 0.4
-    const SPAWN_Z = -10
-
-    const obstacle = new THREE.Mesh(
-        new THREE.BoxGeometry(SIZE, SIZE, SIZE),
-        new THREE.MeshStandardMaterial({ color: 0xff3333 })
-    )
-
-    obstacle.position.set(
-        (Math.random() - 0.5) * SPAWN_RANGE_X,
-        SPAWN_Y,
-        SPAWN_Z
-    )
-
-    scene.add(obstacle)
-    gameState.obstacles.push(obstacle)
-}
-
-function updateObstacles() {
-    const SPEED = 0.4
-    const COLLISION_DISTANCE = 0.8
-    const REMOVE_Z = 5
-
-    for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
-        const obstacle = gameState.obstacles[i]
-        
-        // Gerakkan obstacle ke arah player
-        obstacle.position.z += SPEED
-
-        // Cek tabrakan dengan player
-        if (obstacle.position.distanceTo(player.position) < COLLISION_DISTANCE) {
-            gameOver()
-            return
-        }
-
-        // Hapus obstacle yang sudah melewati player
-        if (obstacle.position.z > REMOVE_Z) {
-            scene.remove(obstacle)
-            gameState.obstacles.splice(i, 1)
-        }
-    }
-}
-
-function clearAllObstacles() {
-    gameState.obstacles.forEach(obstacle => scene.remove(obstacle))
-    gameState.obstacles = []
-}
-
-// ============================================================
-//                    RADAR FUNCTIONS
-// ============================================================
-function updateRadar() {
-    const RANGE_X = 12
-    const RANGE_Z = 25
-    const OFFSET_X = 6
-    const OFFSET_Z = 20
-
-    const radar = document.getElementById('radar')
-    radar.innerHTML = ''
-
-    // Blip untuk player (di tengah-bawah radar)
-    const playerBlip = document.createElement('div')
-    playerBlip.className = 'radar-blip player-blip'
-    playerBlip.style.left = '50%'
-    playerBlip.style.top = '80%'
-    radar.appendChild(playerBlip)
-
-    // Blip untuk setiap obstacle
-    gameState.obstacles.forEach(obstacle => {
-        // Konversi koordinat 3D ke posisi radar (0% - 100%)
-        const radarX = (obstacle.position.x + OFFSET_X) / RANGE_X * 100
-        const radarZ = (obstacle.position.z + OFFSET_Z) / RANGE_Z * 100
-
-        // Hanya tampilkan jika dalam jangkauan radar
-        if (radarX >= 0 && radarX <= 100 && radarZ >= 0 && radarZ <= 100) {
-            const blip = document.createElement('div')
-            blip.className = 'radar-blip'
-            blip.style.left = `${radarX}%`
-            blip.style.top = `${radarZ}%`
-            radar.appendChild(blip)
-        }
-    })
-}
-
-function clearRadar() {
-    const radar = document.getElementById('radar')
-    radar.innerHTML = ''
-}
-
-// ============================================================
-//                    GAME CONTROL FUNCTIONS
-// ============================================================
+// ------------------------------------------------------------
+// FUNGSI UNTUK MEMULAI GAME
+// ------------------------------------------------------------
 function startGame() {
-    resetGame()
-    gameState.isRunning = true
+    // Set flag game berjalan
+    isGameRunning = true;
+    
+    // Reset skor ke 0
+    GameState.resetScore();
+    
+    // Hapus semua meteor yang ada
+    obstacleManager.clearAll();
+    
+    // Reset posisi pesawat ke tengah
+    spaceship.resetPosition();
+    
+    // Sembunyikan tombol start/stop saat bermain
+    UIManager.hideControls();
+    
+    // Tampilkan pesan di console (untuk debugging)
+    console.log('Game dimulai!');
 }
 
+// ------------------------------------------------------------
+// FUNGSI UNTUK MENGHENTIKAN GAME
+// ------------------------------------------------------------
 function stopGame() {
-    gameState.isRunning = false
+    // Set flag game berhenti
+    isGameRunning = false;
+    
+    // Hapus semua meteor
+    obstacleManager.clearAll();
+    
+    // Tampilkan tombol kembali
+    UIManager.showControls();
+    
+    console.log('Game dihentikan');
 }
 
-function resetGame() {
-    const START_Y = 0.5
-
-    clearAllObstacles()
-    clearRadar()
-    
-    gameState.score = 0
-    gameState.obstacleTimer = 0
-    
-    document.getElementById('score').textContent = 0
-    player.position.set(0, START_Y, 0)
-}
-
+// ------------------------------------------------------------
+// FUNGSI GAME OVER
+// ------------------------------------------------------------
 function gameOver() {
-    gameState.isRunning = false
-
-    // Update high score jika perlu
-    if (gameState.score > gameState.highScore) {
-        gameState.highScore = gameState.score
-        localStorage.setItem('highScore', gameState.highScore)
-        document.getElementById('highScore').textContent = gameState.highScore
-    }
-
-    alert('Game Over!')
-}
-
-// ============================================================
-//                    INPUT HANDLERS
-// ============================================================
-function handleKeyDown(event) {
-    const MOVE_SPEED = 0.3
-
-    if (!gameState.isRunning) return
-
-    const key = event.key.toLowerCase()
+    // Hentikan game
+    isGameRunning = false;
     
-    switch (key) {
-        case 'a':
-        case 'arrowleft':
-            player.position.x -= MOVE_SPEED
-            break
-        case 'd':
-        case 'arrowright':
-            player.position.x += MOVE_SPEED
-            break
-        case 'w':
-        case 'arrowup':
-            player.position.z -= MOVE_SPEED
-            break
-        case 's':
-        case 'arrowdown':
-            player.position.z += MOVE_SPEED
-            break
-    }
+    // Simpan skor tertinggi jika lebih tinggi dari sebelumnya
+    GameState.saveHighScore();
+    
+    // Hapus semua meteor
+    obstacleManager.clearAll();
+    
+    // Tampilkan tombol kembali
+    UIManager.showControls();
+    
+    // Tampilkan alert game over
+    alert('GAME OVER! Skor kamu: ' + GameState.score);
+    
+    console.log('Game Over! Skor:', GameState.score);
 }
 
-function handleResize() {
-    camera.aspect = window.innerWidth / window.innerHeight
-    camera.updateProjectionMatrix()
-    renderer.setSize(window.innerWidth, window.innerHeight)
-}
-
-// ============================================================
-//                    EVENT LISTENERS
-// ============================================================
-window.addEventListener('keydown', handleKeyDown)
-window.addEventListener('resize', handleResize)
-
-document.getElementById('startBtn').addEventListener('click', startGame)
-document.getElementById('stopBtn').addEventListener('click', stopGame)
-
-// ============================================================
-//                    MAIN GAME LOOP
-// ============================================================
+// ------------------------------------------------------------
+// FUNGSI ANIMASI (GAME LOOP)
+// ------------------------------------------------------------
+// Fungsi ini dipanggil 60 kali per detik (60 FPS)
 function animate() {
-    const SPAWN_INTERVAL = 60
-
-    requestAnimationFrame(animate)
-
-    if (gameState.isRunning) {
-        // Update score
-        gameState.score++
-        document.getElementById('score').textContent = gameState.score
-
-        // Spawn obstacles secara berkala
-        gameState.obstacleTimer++
-        if (gameState.obstacleTimer >= SPAWN_INTERVAL) {
-            spawnObstacle()
-            gameState.obstacleTimer = 0
+    // Minta browser memanggil animate() di frame berikutnya
+    requestAnimationFrame(animate);
+    
+    // Jika game sedang berjalan...
+    if (isGameRunning) {
+        // ----------------------------------------------------
+        // UPDATE GAME OBJECTS
+        // ----------------------------------------------------
+        
+        // Update posisi bintang (bergerak ke arah pemain)
+        updateBackground();
+        
+        // Update meteor (spawn baru, gerakkan, hapus yang lewat)
+        obstacleManager.update(gameSpeed);
+        
+        // Update efek engine pesawat (glow berkedip)
+        spaceship.updateEngineGlow();
+        
+        // ----------------------------------------------------
+        // PROSES INPUT KEYBOARD
+        // ----------------------------------------------------
+        
+        // Cek tombol yang ditekan dan gerakkan pesawat
+        if (InputHandler.isPressed('left')) {
+            spaceship.moveLeft();    // Gerak kiri
         }
-
-        // Update game elements
-        updateBackground()
-        updateObstacles()
-        updateRadar()
+        if (InputHandler.isPressed('right')) {
+            spaceship.moveRight();   // Gerak kanan
+        }
+        if (InputHandler.isPressed('up')) {
+            spaceship.moveUp();      // Gerak atas (mundur)
+        }
+        if (InputHandler.isPressed('down')) {
+            spaceship.moveDown();    // Gerak bawah (maju)
+        }
+        
+        // ----------------------------------------------------
+        // CEK TABRAKAN (COLLISION DETECTION)
+        // ----------------------------------------------------
+        
+        // Ambil posisi pesawat
+        var spaceshipPosition = spaceship.getPosition();
+        
+        // Cek apakah ada meteor yang menabrak pesawat
+        var isCollision = obstacleManager.checkCollision(spaceshipPosition, 0.5);
+        
+        // Jika tabrakan, game over!
+        if (isCollision) {
+            gameOver();
+        }
+        
+        // ----------------------------------------------------
+        // UPDATE SKOR
+        // ----------------------------------------------------
+        
+        // Tambah skor setiap frame
+        GameState.addScore(1);
+        
+        // Update tampilan skor di layar
+        UIManager.updateScore(GameState.score, GameState.highScore);
     }
-
-    // Render scene
-    renderer.render(scene, camera)
+    
+    // Update kontrol kamera (untuk pan)
+    controls.update();
+    
+    // Gambar scene ke layar
+    renderer.render(scene, camera);
 }
 
-// Mulai game loop
-animate()
+// ------------------------------------------------------------
+// EVENT: RESIZE WINDOW
+// ------------------------------------------------------------
+// Saat ukuran window berubah, update kamera dan renderer
+window.addEventListener('resize', function() {
+    // Update aspect ratio kamera
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    
+    // Update ukuran renderer
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL START
+// ------------------------------------------------------------
+var startButton = document.getElementById('startButton');
+startButton.addEventListener('click', function() {
+    startGame();
+});
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL STOP
+// ------------------------------------------------------------
+var stopButton = document.getElementById('stopButton');
+stopButton.addEventListener('click', function() {
+    stopGame();
+});
+
+// ------------------------------------------------------------
+// MULAI GAME LOOP
+// ------------------------------------------------------------
+// Panggil fungsi animate() untuk memulai rendering
+animate();
+
+// Tampilkan pesan bahwa game sudah siap
+console.log('Space Runner siap! Klik START untuk bermain.');
