@@ -19,6 +19,7 @@ import { Spaceship } from './modules/spaceship.js';      // Pesawat pemain
 import { ObstacleManager } from './modules/obstacle.js'; // Manager meteor
 import { setupBackground, updateBackground } from './modules/background.js'; // Latar belakang
 import { GameState, UIManager, InputHandler } from './core/game.js'; // Logic game
+import { ExplosionManager } from './modules/explosion.js';
 
 // Import Firebase untuk menyimpan skor online
 import { 
@@ -34,7 +35,7 @@ import {
 // SETUP SCENE (TEMPAT 3D)
 // ------------------------------------------------------------
 // Scene adalah "dunia 3D" tempat semua objek berada
-var scene = new THREE.Scene();
+let scene = new THREE.Scene();
 
 // Warna background hitam untuk efek luar angkasa
 scene.background = new THREE.Color(0x000011);
@@ -44,7 +45,7 @@ scene.background = new THREE.Color(0x000011);
 // ------------------------------------------------------------
 // PerspectiveCamera = kamera dengan perspektif seperti mata manusia
 // Parameter: FOV (sudut pandang), aspect ratio, near plane, far plane
-var camera = new THREE.PerspectiveCamera(
+let camera = new THREE.PerspectiveCamera(
     75,                                      // FOV: 75 derajat
     window.innerWidth / window.innerHeight,  // Aspect ratio layar
     0.1,                                     // Jarak terdekat yang terlihat
@@ -59,7 +60,7 @@ camera.lookAt(0, 0, 0);        // Kamera melihat ke titik pusat
 // SETUP RENDERER (PENGGAMBAR)
 // ------------------------------------------------------------
 // Renderer bertugas menggambar scene ke layar
-var renderer = new THREE.WebGLRenderer({
+let renderer = new THREE.WebGLRenderer({
     antialias: true  // Menghaluskan garis-garis (anti jagged)
 });
 
@@ -73,7 +74,7 @@ document.body.appendChild(renderer.domElement);
 // SETUP KONTROL KAMERA (ORBIT CONTROLS)
 // ------------------------------------------------------------
 // OrbitControls memungkinkan user menggeser kamera
-var controls = new OrbitControls(camera, renderer.domElement);
+let controls = new OrbitControls(camera, renderer.domElement);
 
 // Aktifkan pan (geser kamera)
 controls.enablePan = true;
@@ -88,13 +89,13 @@ controls.mouseButtons = {
 };
 
 // Posisi awal kamera (untuk kembali setelah pan)
-var originalCameraPos = camera.position.clone();
-var originalTarget = new THREE.Vector3(0, 0, 0);
-var isPanning = false;
+let originalCameraPos = camera.position.clone();
+let originalTarget = new THREE.Vector3(0, 0, 0);
+let isPanning = false;
 
 // Batas pan kamera
-var minPan = new THREE.Vector3(-3, 0, -2);
-var maxPan = new THREE.Vector3(3, 4, 8);
+let minPan = new THREE.Vector3(-3, 0, -2);
+let maxPan = new THREE.Vector3(3, 4, 8);
 
 // Event: saat mulai pan
 controls.addEventListener('start', function() {
@@ -115,16 +116,16 @@ controls.addEventListener('change', function() {
 // SETUP PENCAHAYAAN
 // ------------------------------------------------------------
 // AmbientLight = cahaya merata dari segala arah (seperti cahaya siang)
-var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);  // Lebih terang
+let ambientLight = new THREE.AmbientLight(0xffffff, 0.8);  // Lebih terang
 scene.add(ambientLight);
 
 // DirectionalLight = cahaya dari satu arah (seperti matahari)
-var directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);  // Lebih terang
+let directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);  // Lebih terang
 directionalLight.position.set(5, 10, 5);
 scene.add(directionalLight);
 
 // SpotLight = lampu sorot untuk menyorot pesawat
-var spotLight = new THREE.SpotLight(0x00ffff, 8);  // Cyan, SANGAT terang
+let spotLight = new THREE.SpotLight(0x00ffff, 8);  // Cyan, SANGAT terang
 spotLight.position.set(0, 8, 5);  // Posisi di atas belakang
 spotLight.angle = Math.PI / 5;    // Sudut sorot lebih lebar
 spotLight.penumbra = 0.3;         // Tepi lebih tajam
@@ -133,12 +134,12 @@ spotLight.distance = 50;          // Jarak lebih jauh
 scene.add(spotLight);
 
 // Target spotlight = pesawat (akan diupdate setelah spaceship dibuat)
-var spotLightTarget = new THREE.Object3D();
+let spotLightTarget = new THREE.Object3D();
 scene.add(spotLightTarget);
 spotLight.target = spotLightTarget;
 
 // SpotLight kedua dari depan (rim light)
-var rimLight = new THREE.SpotLight(0xff00ff, 5);  // Magenta, lebih terang
+let rimLight = new THREE.SpotLight(0xff00ff, 5);  // Magenta, lebih terang
 rimLight.position.set(0, 3, -10);  // Di depan pesawat
 rimLight.angle = Math.PI / 4;
 rimLight.penumbra = 0.5;
@@ -147,22 +148,25 @@ rimLight.distance = 40;
 scene.add(rimLight);
 
 // Point light di bawah untuk efek dramatic
-var underLight = new THREE.PointLight(0x0066ff, 3, 15);  // Biru, lebih terang
+let underLight = new THREE.PointLight(0x0066ff, 3, 15);  // Biru, lebih terang
 underLight.position.set(0, -2, 0);
 scene.add(underLight);
 
 // Tambahan: Hemisphere light untuk fill
-var hemiLight = new THREE.HemisphereLight(0x00ffff, 0xff00ff, 0.5);  // Langit cyan, tanah magenta
+let hemiLight = new THREE.HemisphereLight(0x00ffff, 0xff00ff, 0.5);  // Langit cyan, tanah magenta
 scene.add(hemiLight);
 
 // ------------------------------------------------------------
 // INISIALISASI GAME OBJECTS
 // ------------------------------------------------------------
 // Buat spaceship (pesawat pemain)
-var spaceship = new Spaceship(scene);
+let spaceship = new Spaceship(scene);
 
 // Buat obstacle manager (pengatur meteor)
-var obstacleManager = new ObstacleManager(scene);
+let obstacleManager = new ObstacleManager(scene);
+
+// Explosion manager (efek ledakan)
+let explosionManager = new ExplosionManager(scene);
 
 // Setup background (bintang-bintang)
 setupBackground(scene);
@@ -202,10 +206,10 @@ listenToHighScore(function(highScoreData) {
 // Fungsi untuk load high score dari cloud
 async function loadHighScoreFromCloud() {
     try {
-        var timeoutPromise = new Promise(function(_, reject) {
+        let timeoutPromise = new Promise(function(_, reject) {
             setTimeout(function() { reject(new Error('Timeout')); }, 3000);
         });
-        var highScoreData = await Promise.race([getHighScoreFromFirebase(), timeoutPromise]);
+        let highScoreData = await Promise.race([getHighScoreFromFirebase(), timeoutPromise]);
         if (highScoreData) {
             GameState.highScore = highScoreData.score;
             GameState.highScoreName = highScoreData.name;
@@ -222,31 +226,31 @@ async function loadHighScoreFromCloud() {
 // FUNGSI LOAD LEADERBOARD
 // ------------------------------------------------------------
 async function loadLeaderboard() {
-    var leaderboardList = document.getElementById('leaderboardList');
+    let leaderboardList = document.getElementById('leaderboardList');
     if (!leaderboardList) return;
     
     try {
         // Timeout 3 detik
-        var timeoutPromise = new Promise(function(_, reject) {
+        let timeoutPromise = new Promise(function(_, reject) {
             setTimeout(function() { reject(new Error('Timeout')); }, 3000);
         });
         
-        var scores = await Promise.race([getLeaderboard(10), timeoutPromise]);
+        let scores = await Promise.race([getLeaderboard(10), timeoutPromise]);
         
         if (!scores || scores.length === 0) {
             leaderboardList.innerHTML = '<div class="leaderboard-empty">No scores yet.<br>Be the first!</div>';
             return;
         }
         
-        var html = '';
+        let html = '';
         scores.forEach(function(item, index) {
-            var rank = index + 1;
-            var topClass = '';
+            let rank = index + 1;
+            let topClass = '';
             if (rank === 1) topClass = 'top-1';
             else if (rank === 2) topClass = 'top-2';
             else if (rank === 3) topClass = 'top-3';
             
-            var medal = '';
+            let medal = '';
             if (rank === 1) medal = '🥇';
             else if (rank === 2) medal = '🥈';
             else if (rank === 3) medal = '🥉';
@@ -271,14 +275,16 @@ async function loadLeaderboard() {
 }
 
 // ------------------------------------------------------------
-// VARIABEL GAME
+// letIABEL GAME
 // ------------------------------------------------------------
-var isGameRunning = false;  // Apakah game sedang berjalan?
-var selectedLevel = 1;      // Level yang dipilih (1-5)
-var gameSpeed = 0.03;       // Kecepatan game (akan diatur berdasarkan level)
+let isGameRunning = false;  // Apakah game sedang berjalan?
+let selectedLevel = 1;      // Level yang dipilih (1-5)
+let gameSpeed = 0.03;       // Kecepatan game (akan diatur berdasarkan level)
+let collisionHandled = false; // flag untuk mencegah multi-trigger tabrakan
+let _lastTime = null; // untuk menghitung dt di animate
 
 // Kecepatan untuk setiap level
-var levelSpeeds = {
+let levelSpeeds = {
     1: 0.03,   // Pelan
     2: 0.05,   // Normal
     3: 0.08,   // Cepat
@@ -291,8 +297,8 @@ var levelSpeeds = {
 // ------------------------------------------------------------
 function startGame() {
     // Ambil nama pemain dari input
-    var nameInput = document.getElementById('playerName');
-    var playerName = nameInput ? nameInput.value.trim() : 'Player';
+    let nameInput = document.getElementById('playerName');
+    let playerName = nameInput ? nameInput.value.trim() : 'Player';
     if (!playerName) playerName = 'Player';
     GameState.setPlayerName(playerName);
     
@@ -310,6 +316,11 @@ function startGame() {
     
     // Reset posisi pesawat ke tengah
     spaceship.resetPosition();
+    // Pastikan pesawat terlihat (jika sebelumnya disembunyikan oleh ledakan)
+    if (spaceship && spaceship.mesh) spaceship.mesh.visible = true;
+
+    // Reset flag collision
+    collisionHandled = false;
     
     // Sembunyikan tombol start/stop saat bermain
     UIManager.hideControls();
@@ -351,21 +362,21 @@ async function gameOver() {
     obstacleManager.clearAll();
     
     // Default: bukan rekor baru
-    var isNewRecord = false;
+    let isNewRecord = false;
     
     // Coba simpan ke Firebase dengan timeout 3 detik
     try {
         // Promise dengan timeout
-        var timeoutPromise = new Promise(function(_, reject) {
+        let timeoutPromise = new Promise(function(_, reject) {
             setTimeout(function() { reject(new Error('Timeout')); }, 3000);
         });
         
         // Cek apakah rekor baru
-        var checkPromise = isNewHighScore(GameState.score);
+        let checkPromise = isNewHighScore(GameState.score);
         isNewRecord = await Promise.race([checkPromise, timeoutPromise]);
         
         // Simpan skor ke Firebase
-        var savePromise = saveScoreToFirebase(GameState.playerName, GameState.score, selectedLevel);
+        let savePromise = saveScoreToFirebase(GameState.playerName, GameState.score, selectedLevel);
         await Promise.race([savePromise, timeoutPromise]);
         
         console.log('✅ Skor tersimpan ke Firebase');
@@ -396,10 +407,10 @@ async function gameOver() {
 // FUNGSI TAMPILKAN MODAL GAME OVER
 // ------------------------------------------------------------
 function showGameOverModal(score, isNewRecord, playerName) {
-    var modal = document.getElementById('gameOverModal');
-    var finalScore = document.getElementById('finalScore');
-    var newRecordText = document.getElementById('newRecord');
-    var gameOverName = document.getElementById('gameOverName');
+    let modal = document.getElementById('gameOverModal');
+    let finalScore = document.getElementById('finalScore');
+    let newRecordText = document.getElementById('newRecord');
+    let gameOverName = document.getElementById('gameOverName');
     
     // Set nama pemain
     if (gameOverName) {
@@ -424,7 +435,7 @@ function showGameOverModal(score, isNewRecord, playerName) {
 // FUNGSI SEMBUNYIKAN MODAL
 // ------------------------------------------------------------
 function hideGameOverModal() {
-    var modal = document.getElementById('gameOverModal');
+    let modal = document.getElementById('gameOverModal');
     modal.classList.add('hidden');
     
     // Tampilkan leaderboard lagi
@@ -438,11 +449,16 @@ function hideGameOverModal() {
 function animate() {
     // Minta browser memanggil animate() di frame berikutnya
     requestAnimationFrame(animate);
+    // Hitung delta time (detik)
+    let now = performance.now();
+    let dt = 0;
+    if (_lastTime !== null) dt = (now - _lastTime) / 1000;
+    _lastTime = now;
     
     // --------------------------------------------------------
     // UPDATE SPOTLIGHT MENGIKUTI PESAWAT
     // --------------------------------------------------------
-    var shipPos = spaceship.getPosition();
+    let shipPos = spaceship.getPosition();
     spotLightTarget.position.copy(shipPos);
     spotLight.position.set(shipPos.x, shipPos.y + 8, shipPos.z + 5);
     rimLight.target = spotLightTarget;
@@ -495,14 +511,27 @@ function animate() {
         // ----------------------------------------------------
         
         // Ambil posisi pesawat
-        var spaceshipPosition = spaceship.getPosition();
+        let spaceshipPosition = spaceship.getPosition();
         
         // Cek apakah ada meteor yang menabrak pesawat
-        var isCollision = obstacleManager.checkCollision(spaceshipPosition, 0.5);
+        let isCollision = obstacleManager.checkCollision(spaceshipPosition, 0.5);
         
-        // Jika tabrakan, game over!
-        if (isCollision) {
-            gameOver();
+        // Jika tabrakan, trigger efek ledakan dan game over setelah delay
+        if (isCollision && !collisionHandled) {
+            collisionHandled = true;
+
+            console.log('Collision detected at', spaceshipPosition.toArray());
+
+            // Sembunyikan pesawat visualnya
+            if (spaceship && spaceship.mesh) spaceship.mesh.visible = false;
+
+            // Spawn ledakan di posisi pesawat
+            explosionManager.spawn(spaceshipPosition, { count: 48, duration: 1.1 });
+
+            // Delay singkat sebelum gameOver agar efek kelihatan
+            setTimeout(function() {
+                gameOver();
+            }, 800);
         }
         
         // ----------------------------------------------------
@@ -518,6 +547,9 @@ function animate() {
     
     // Update kontrol kamera (untuk pan)
     controls.update();
+    
+    // Update explosions
+    if (explosionManager) explosionManager.update(dt);
     
     // Gambar scene ke layar
     renderer.render(scene, camera);
@@ -539,7 +571,7 @@ window.addEventListener('resize', function() {
 // ------------------------------------------------------------
 // EVENT: TOMBOL START
 // ------------------------------------------------------------
-var startButton = document.getElementById('startBtn');
+let startButton = document.getElementById('startBtn');
 if (startButton) {
     startButton.addEventListener('click', function() {
         startGame();
@@ -549,7 +581,7 @@ if (startButton) {
 // ------------------------------------------------------------
 // EVENT: TOMBOL STOP
 // ------------------------------------------------------------
-var stopButton = document.getElementById('stopBtn');
+let stopButton = document.getElementById('stopBtn');
 if (stopButton) {
     stopButton.addEventListener('click', function() {
         stopGame();
@@ -559,7 +591,7 @@ if (stopButton) {
 // ------------------------------------------------------------
 // EVENT: TOMBOL LEVEL
 // ------------------------------------------------------------
-var levelButtons = document.querySelectorAll('.level-btn');
+let levelButtons = document.querySelectorAll('.level-btn');
 levelButtons.forEach(function(btn) {
     btn.addEventListener('click', function() {
         // Hapus class active dari semua tombol
@@ -580,7 +612,7 @@ levelButtons.forEach(function(btn) {
 // ------------------------------------------------------------
 // EVENT: TOMBOL RESTART (DI MODAL)
 // ------------------------------------------------------------
-var restartBtn = document.getElementById('restartBtn');
+let restartBtn = document.getElementById('restartBtn');
 if (restartBtn) {
     restartBtn.addEventListener('click', function() {
         hideGameOverModal();
@@ -591,7 +623,7 @@ if (restartBtn) {
 // ------------------------------------------------------------
 // EVENT: TOMBOL MENU (DI MODAL)
 // ------------------------------------------------------------
-var menuBtn = document.getElementById('menuBtn');
+let menuBtn = document.getElementById('menuBtn');
 if (menuBtn) {
     menuBtn.addEventListener('click', function() {
         hideGameOverModal();
