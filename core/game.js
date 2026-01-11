@@ -92,7 +92,7 @@ export var UIManager = {
         // document.getElementById('id') mencari elemen dengan id tertentu
         this.scoreElement = document.getElementById('score');
         this.highScoreElement = document.getElementById('highScore');
-        this.controlsElement = document.getElementById('controls');
+        this.controlsElement = document.querySelector('.controls');
         
         // Tampilkan high score yang tersimpan
         if (this.highScoreElement) {

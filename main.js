@@ -65,24 +65,39 @@ document.body.appendChild(renderer.domElement);
 // OrbitControls memungkinkan user menggeser kamera
 var controls = new OrbitControls(camera, renderer.domElement);
 
-// Aktifkan pan (geser kamera) dengan batas
+// Aktifkan pan (geser kamera)
 controls.enablePan = true;
-
-// Matikan rotate dan zoom (agar view tetap konsisten)
 controls.enableRotate = false;
 controls.enableZoom = false;
 
-// Batas pan kamera (agar tidak terlalu jauh)
-// minPan = batas minimum (kiri-bawah)
-// maxPan = batas maximum (kanan-atas)
-var minPan = new THREE.Vector3(-5, 0, -3);  // Batas kiri dan depan
-var maxPan = new THREE.Vector3(5, 6, 10);   // Batas kanan dan belakang
+// Set tombol mouse untuk pan
+controls.mouseButtons = {
+    LEFT: THREE.MOUSE.PAN,
+    MIDDLE: THREE.MOUSE.PAN,
+    RIGHT: null
+};
 
-// Event listener: saat kamera berubah, cek batasnya
+// Posisi awal kamera (untuk kembali setelah pan)
+var originalCameraPos = camera.position.clone();
+var originalTarget = new THREE.Vector3(0, 0, 0);
+var isPanning = false;
+
+// Batas pan kamera
+var minPan = new THREE.Vector3(-3, 0, -2);
+var maxPan = new THREE.Vector3(3, 4, 8);
+
+// Event: saat mulai pan
+controls.addEventListener('start', function() {
+    isPanning = true;
+});
+
+// Event: saat selesai pan (lepas mouse)
+controls.addEventListener('end', function() {
+    isPanning = false;
+});
+
+// Event: batasi pan
 controls.addEventListener('change', function() {
-    // Clamp = membatasi nilai agar tidak keluar batas
-    // Jika target.x < -5, maka jadi -5
-    // Jika target.x > 5, maka jadi 5
     controls.target.clamp(minPan, maxPan);
 });
 
@@ -90,13 +105,45 @@ controls.addEventListener('change', function() {
 // SETUP PENCAHAYAAN
 // ------------------------------------------------------------
 // AmbientLight = cahaya merata dari segala arah (seperti cahaya siang)
-var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);  // Putih, intensitas 0.6
+var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);  // Lebih terang
 scene.add(ambientLight);
 
 // DirectionalLight = cahaya dari satu arah (seperti matahari)
-var directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);  // Putih, intensitas 0.8
-directionalLight.position.set(5, 10, 5);  // Posisi cahaya
+var directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);  // Lebih terang
+directionalLight.position.set(5, 10, 5);
 scene.add(directionalLight);
+
+// SpotLight = lampu sorot untuk menyorot pesawat
+var spotLight = new THREE.SpotLight(0x00ffff, 8);  // Cyan, SANGAT terang
+spotLight.position.set(0, 8, 5);  // Posisi di atas belakang
+spotLight.angle = Math.PI / 5;    // Sudut sorot lebih lebar
+spotLight.penumbra = 0.3;         // Tepi lebih tajam
+spotLight.decay = 0.5;            // Peluruhan lebih lambat
+spotLight.distance = 50;          // Jarak lebih jauh
+scene.add(spotLight);
+
+// Target spotlight = pesawat (akan diupdate setelah spaceship dibuat)
+var spotLightTarget = new THREE.Object3D();
+scene.add(spotLightTarget);
+spotLight.target = spotLightTarget;
+
+// SpotLight kedua dari depan (rim light)
+var rimLight = new THREE.SpotLight(0xff00ff, 5);  // Magenta, lebih terang
+rimLight.position.set(0, 3, -10);  // Di depan pesawat
+rimLight.angle = Math.PI / 4;
+rimLight.penumbra = 0.5;
+rimLight.decay = 0.5;
+rimLight.distance = 40;
+scene.add(rimLight);
+
+// Point light di bawah untuk efek dramatic
+var underLight = new THREE.PointLight(0x0066ff, 3, 15);  // Biru, lebih terang
+underLight.position.set(0, -2, 0);
+scene.add(underLight);
+
+// Tambahan: Hemisphere light untuk fill
+var hemiLight = new THREE.HemisphereLight(0x00ffff, 0xff00ff, 0.5);  // Langit cyan, tanah magenta
+scene.add(hemiLight);
 
 // ------------------------------------------------------------
 // INISIALISASI GAME OBJECTS
@@ -123,7 +170,17 @@ InputHandler.init();
 // VARIABEL GAME
 // ------------------------------------------------------------
 var isGameRunning = false;  // Apakah game sedang berjalan?
-var gameSpeed = 0.05;       // Kecepatan game (makin besar = makin cepat)
+var selectedLevel = 1;      // Level yang dipilih (1-5)
+var gameSpeed = 0.03;       // Kecepatan game (akan diatur berdasarkan level)
+
+// Kecepatan untuk setiap level
+var levelSpeeds = {
+    1: 0.03,   // Pelan
+    2: 0.05,   // Normal
+    3: 0.08,   // Cepat
+    4: 0.12,   // Sangat cepat
+    5: 0.18    // Gila!
+};
 
 // ------------------------------------------------------------
 // FUNGSI UNTUK MEMULAI GAME
@@ -131,6 +188,9 @@ var gameSpeed = 0.05;       // Kecepatan game (makin besar = makin cepat)
 function startGame() {
     // Set flag game berjalan
     isGameRunning = true;
+    
+    // Set kecepatan berdasarkan level
+    gameSpeed = levelSpeeds[selectedLevel];
     
     // Reset skor ke 0
     GameState.resetScore();
@@ -171,19 +231,49 @@ function gameOver() {
     // Hentikan game
     isGameRunning = false;
     
+    // Cek apakah skor baru adalah rekor baru
+    var isNewRecord = GameState.score > GameState.highScore;
+    
     // Simpan skor tertinggi jika lebih tinggi dari sebelumnya
     GameState.saveHighScore();
     
     // Hapus semua meteor
     obstacleManager.clearAll();
     
-    // Tampilkan tombol kembali
-    UIManager.showControls();
-    
-    // Tampilkan alert game over
-    alert('GAME OVER! Skor kamu: ' + GameState.score);
+    // Tampilkan modal game over
+    showGameOverModal(GameState.score, isNewRecord);
     
     console.log('Game Over! Skor:', GameState.score);
+}
+
+// ------------------------------------------------------------
+// FUNGSI TAMPILKAN MODAL GAME OVER
+// ------------------------------------------------------------
+function showGameOverModal(score, isNewRecord) {
+    var modal = document.getElementById('gameOverModal');
+    var finalScore = document.getElementById('finalScore');
+    var newRecordText = document.getElementById('newRecord');
+    
+    // Set skor
+    finalScore.textContent = score;
+    
+    // Tampilkan "NEW RECORD" jika rekor baru
+    if (isNewRecord) {
+        newRecordText.classList.remove('hidden');
+    } else {
+        newRecordText.classList.add('hidden');
+    }
+    
+    // Tampilkan modal
+    modal.classList.remove('hidden');
+}
+
+// ------------------------------------------------------------
+// FUNGSI SEMBUNYIKAN MODAL
+// ------------------------------------------------------------
+function hideGameOverModal() {
+    var modal = document.getElementById('gameOverModal');
+    modal.classList.add('hidden');
 }
 
 // ------------------------------------------------------------
@@ -193,6 +283,24 @@ function gameOver() {
 function animate() {
     // Minta browser memanggil animate() di frame berikutnya
     requestAnimationFrame(animate);
+    
+    // --------------------------------------------------------
+    // UPDATE SPOTLIGHT MENGIKUTI PESAWAT
+    // --------------------------------------------------------
+    var shipPos = spaceship.getPosition();
+    spotLightTarget.position.copy(shipPos);
+    spotLight.position.set(shipPos.x, shipPos.y + 8, shipPos.z + 5);
+    rimLight.target = spotLightTarget;
+    underLight.position.set(shipPos.x, shipPos.y - 2, shipPos.z);
+    
+    // --------------------------------------------------------
+    // PAN KEMBALI KE POSISI AWAL (jika tidak sedang pan)
+    // --------------------------------------------------------
+    if (!isPanning) {
+        // Lerp = Linear interpolation (pergerakan halus)
+        // Kamera perlahan kembali ke posisi awal
+        controls.target.lerp(originalTarget, 0.05);
+    }
     
     // Jika game sedang berjalan...
     if (isGameRunning) {
@@ -276,18 +384,65 @@ window.addEventListener('resize', function() {
 // ------------------------------------------------------------
 // EVENT: TOMBOL START
 // ------------------------------------------------------------
-var startButton = document.getElementById('startButton');
-startButton.addEventListener('click', function() {
-    startGame();
-});
+var startButton = document.getElementById('startBtn');
+if (startButton) {
+    startButton.addEventListener('click', function() {
+        startGame();
+    });
+}
 
 // ------------------------------------------------------------
 // EVENT: TOMBOL STOP
 // ------------------------------------------------------------
-var stopButton = document.getElementById('stopButton');
-stopButton.addEventListener('click', function() {
-    stopGame();
+var stopButton = document.getElementById('stopBtn');
+if (stopButton) {
+    stopButton.addEventListener('click', function() {
+        stopGame();
+    });
+}
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL LEVEL
+// ------------------------------------------------------------
+var levelButtons = document.querySelectorAll('.level-btn');
+levelButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        // Hapus class active dari semua tombol
+        levelButtons.forEach(function(b) {
+            b.classList.remove('active');
+        });
+        
+        // Tambah class active ke tombol yang diklik
+        btn.classList.add('active');
+        
+        // Set level yang dipilih
+        selectedLevel = parseInt(btn.getAttribute('data-level'));
+        
+        console.log('Level dipilih:', selectedLevel);
+    });
 });
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL RESTART (DI MODAL)
+// ------------------------------------------------------------
+var restartBtn = document.getElementById('restartBtn');
+if (restartBtn) {
+    restartBtn.addEventListener('click', function() {
+        hideGameOverModal();
+        startGame();
+    });
+}
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL MENU (DI MODAL)
+// ------------------------------------------------------------
+var menuBtn = document.getElementById('menuBtn');
+if (menuBtn) {
+    menuBtn.addEventListener('click', function() {
+        hideGameOverModal();
+        UIManager.showControls();
+    });
+}
 
 // ------------------------------------------------------------
 // MULAI GAME LOOP

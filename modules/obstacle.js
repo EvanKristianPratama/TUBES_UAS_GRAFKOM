@@ -30,7 +30,10 @@ export class ObstacleManager {
         // Timer untuk spawn meteor baru
         // Meteor akan spawn setiap X frame
         this.spawnTimer = 0;
-        this.spawnInterval = 60;  // Spawn setiap 60 frame (1 detik di 60 FPS)
+        this.spawnInterval = 40;  // Spawn setiap 40 frame (lebih cepat)
+        
+        // Counter untuk membuat meteor makin banyak seiring waktu
+        this.difficultyTimer = 0;
     }
     
     // --------------------------------------------------------
@@ -38,15 +41,27 @@ export class ObstacleManager {
     // --------------------------------------------------------
     spawn() {
         // ====================================================
+        // UKURAN RANDOM (KECIL, SEDANG, BESAR)
+        // ====================================================
+        // Ukuran random antara 0.2 sampai 0.5
+        var randomSize = 0.2 + Math.random() * 0.3;
+        
+        // ====================================================
         // BUAT GEOMETRY METEOR (BENTUK BOLA TIDAK RATA)
         // ====================================================
         // IcosahedronGeometry = bentuk bola dengan permukaan kasar
         // Parameter: radius, detail (makin kecil = makin kasar)
-        var geometry = new THREE.IcosahedronGeometry(0.3, 0);
+        var geometry = new THREE.IcosahedronGeometry(randomSize, 0);
         
-        // Material meteor dengan warna coklat-orange
+        // ====================================================
+        // WARNA RANDOM (VARIASI METEOR)
+        // ====================================================
+        var colors = [0x886644, 0x664422, 0x998866, 0x554433, 0x775544];
+        var randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        // Material meteor dengan warna random
         var material = new THREE.MeshStandardMaterial({
-            color: 0x886644,       // Warna coklat
+            color: randomColor,
             metalness: 0.3,
             roughness: 0.8,
             flatShading: true     // Shading flat untuk efek low-poly
@@ -59,17 +74,23 @@ export class ObstacleManager {
         // TENTUKAN POSISI AWAL METEOR
         // ====================================================
         // Posisi X: random antara -4 sampai 4
-        // Math.random() menghasilkan angka 0-1
-        // Dikali 8 jadi 0-8, dikurangi 4 jadi -4 sampai 4
         var randomX = Math.random() * 8 - 4;
         
-        // Posisi Y: random antara 0 sampai 2 (tinggi)
-        var randomY = Math.random() * 2;
+        // Posisi Y: random antara 0 sampai 3 (lebih tinggi)
+        var randomY = Math.random() * 3;
         
-        // Posisi Z: -20 (jauh di depan, akan bergerak ke pemain)
-        var startZ = -20;
+        // Posisi Z: -20 sampai -30 (variasi jarak)
+        var startZ = -20 - Math.random() * 10;
         
         meteor.position.set(randomX, randomY, startZ);
+        
+        // ====================================================
+        // KECEPATAN RANDOM (LEBIH DINAMIS)
+        // ====================================================
+        // Simpan kecepatan unik untuk setiap meteor
+        meteor.userData.speed = 0.8 + Math.random() * 0.5;  // 0.8 - 1.3
+        meteor.userData.rotationSpeed = 0.01 + Math.random() * 0.04;  // Kecepatan rotasi
+        meteor.userData.size = randomSize;  // Simpan ukuran untuk collision
         
         // ====================================================
         // TAMBAHKAN KE SCENE DAN ARRAY
@@ -98,18 +119,27 @@ export class ObstacleManager {
         // ====================================================
         // BAGIAN 2: GERAKKAN SEMUA METEOR
         // ====================================================
+        // Tambah difficulty seiring waktu
+        this.difficultyTimer++;
+        if (this.difficultyTimer > 300 && this.spawnInterval > 20) {
+            // Kurangi interval spawn setiap 5 detik (makin cepat spawn)
+            this.spawnInterval -= 2;
+            this.difficultyTimer = 0;
+        }
+        
         // Loop dari belakang ke depan (untuk menghapus dengan aman)
         // Menggunakan reverse loop agar index tidak kacau saat splice
         for (var i = this.obstacles.length - 1; i >= 0; i--) {
             var meteor = this.obstacles[i];
             
-            // Gerakkan meteor ke arah pemain (tambah Z)
-            // speed * 3 untuk kecepatan meteor lebih cepat dari background
-            meteor.position.z += speed * 3;
+            // Gerakkan meteor dengan kecepatan unik masing-masing
+            var meteorSpeed = meteor.userData.speed || 1;
+            meteor.position.z += speed * 3 * meteorSpeed;
             
-            // Rotasi meteor untuk efek berputar
-            meteor.rotation.x += 0.02;
-            meteor.rotation.y += 0.03;
+            // Rotasi meteor dengan kecepatan unik
+            var rotSpeed = meteor.userData.rotationSpeed || 0.02;
+            meteor.rotation.x += rotSpeed;
+            meteor.rotation.y += rotSpeed * 1.5;
             
             // ================================================
             // BAGIAN 3: HAPUS METEOR YANG SUDAH LEWAT
@@ -143,9 +173,11 @@ export class ObstacleManager {
             // distanceTo() menghitung jarak 3D antara 2 titik
             var distance = meteor.position.distanceTo(playerPosition);
             
-            // Jika jarak lebih kecil dari radius, berarti tabrakan
-            // radius + 0.3 (ukuran meteor)
-            if (distance < radius + 0.3) {
+            // Ambil ukuran meteor (atau default 0.3)
+            var meteorSize = meteor.userData.size || 0.3;
+            
+            // Jika jarak lebih kecil dari radius + ukuran meteor, berarti tabrakan
+            if (distance < radius + meteorSize) {
                 return true;  // Ada tabrakan!
             }
         }

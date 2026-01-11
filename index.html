@@ -25,12 +25,41 @@
     </div>
 
     <div class="controls">
+      <!-- Level Selector -->
+      <div class="level-selector">
+        <span class="level-label">LEVEL</span>
+        <div class="level-buttons">
+          <button class="level-btn active" data-level="1">1</button>
+          <button class="level-btn" data-level="2">2</button>
+          <button class="level-btn" data-level="3">3</button>
+          <button class="level-btn" data-level="4">4</button>
+          <button class="level-btn" data-level="5">5</button>
+        </div>
+      </div>
+      
       <button id="startBtn">▶ PLAY</button>
       <button id="stopBtn">■ STOP</button>
     </div>
 
     <div class="instructions">
-      <span>W A S D</span> or <span>↑ ← ↓ →</span> to move
+      <span>W A S D</span> or <span>↑ ← ↓ →</span> to move | <span>DRAG</span> to look around
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="gameOverModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-glow"></div>
+      <h1 class="modal-title">GAME OVER</h1>
+      <div class="modal-score">
+        <span class="modal-label">YOUR SCORE</span>
+        <span id="finalScore" class="modal-value">0</span>
+      </div>
+      <div class="modal-highscore">
+        <span id="newRecord" class="new-record hidden">🏆 NEW RECORD!</span>
+      </div>
+      <button id="restartBtn" class="modal-btn">↻ PLAY AGAIN</button>
+      <button id="menuBtn" class="modal-btn secondary">⌂ MENU</button>
     </div>
   </div>
 
