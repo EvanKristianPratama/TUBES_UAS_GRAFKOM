@@ -1,241 +1,367 @@
-// ================= IMPORT THREE.JS =================
+// ============================================================
+//                    IMPORT DEPENDENCIES
+// ============================================================
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { setupBackground, updateBackground } from './background.js'
 
-// ================= SETUP SCENE =================
+// ============================================================
+//                    THREE.JS SETUP
+// ============================================================
+
+// ----- Scene -----
 const scene = new THREE.Scene()
 setupBackground(scene)
 
-// ================= CAMERA =================
-const camera = new THREE.PerspectiveCamera(
-    80,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-)
-camera.position.set(0, 6, 9)
+// ----- Camera -----
+function createCamera() {
+    const FOV = 80
+    const NEAR = 0.1
+    const FAR = 1000
+    const POSITION = { x: 0, y: 6, z: 9 }
 
-// ================= RENDERER (TRANSPARAN) =================
-const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: true // 🔥 PENTING
-})
-renderer.setSize(window.innerWidth, window.innerHeight)
-renderer.setClearColor(0x000000, 0) // 🔥 TRANSPARAN
+    const camera = new THREE.PerspectiveCamera(
+        FOV,
+        window.innerWidth / window.innerHeight,
+        NEAR,
+        FAR
+    )
+    camera.position.set(POSITION.x, POSITION.y, POSITION.z)
+    return camera
+}
+
+const camera = createCamera()
+
+// ----- Renderer (Transparan) -----
+function createRenderer() {
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true
+    })
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    renderer.setClearColor(0x000000, 0)
+    return renderer
+}
+
+const renderer = createRenderer()
 document.body.appendChild(renderer.domElement)
 
-// ================= CONTROLS =================
-const controls = new OrbitControls(camera, renderer.domElement)
-controls.enablePan = false
-controls.enableZoom = false
+// ----- Controls -----
+function createControls(camera, domElement) {
+    const controls = new OrbitControls(camera, domElement)
+    controls.enablePan = false
+    controls.enableZoom = false
+    return controls
+}
 
-// ================= GRID =================
-scene.add(new THREE.GridHelper(10, 10))
+const controls = createControls(camera, renderer.domElement)
 
-// ================= PLAYER (SPACESHIP) =================
-const player = new THREE.Group()
+// ----- Grid Helper -----
+function createGrid() {
+    const SIZE = 10
+    const DIVISIONS = 10
+    return new THREE.GridHelper(SIZE, DIVISIONS)
+}
 
-// Fuselage
-const fuselage = new THREE.Mesh(
-    new THREE.ConeGeometry(0.2, 1.5, 32),
-    new THREE.MeshPhongMaterial({ color: 0xdddddd, shininess: 100 })
-)
-fuselage.rotation.x = -Math.PI / 2
-player.add(fuselage)
+scene.add(createGrid())
 
-// Cockpit
-const cockpit = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.3, 0.5),
-    new THREE.MeshPhongMaterial({ color: 0x88ccff, transparent: true, opacity: 0.8 })
-)
-cockpit.position.set(0, 0.2, -0.2)
-player.add(cockpit)
+// ----- Lighting -----
+function createLighting() {
+    const AMBIENT_INTENSITY = 0.5
+    const POINT_INTENSITY = 1
+    const POINT_POSITION = { x: 5, y: 5, z: 5 }
 
-// Wings
-const wingGeo = new THREE.BoxGeometry(2, 0.1, 0.5)
-const wingMat = new THREE.MeshPhongMaterial({ color: 0xff3333 })
-const wings = new THREE.Mesh(wingGeo, wingMat)
-wings.position.set(0, 0, 0.2)
-player.add(wings)
+    const ambientLight = new THREE.AmbientLight(0xffffff, AMBIENT_INTENSITY)
+    const pointLight = new THREE.PointLight(0xffffff, POINT_INTENSITY)
+    pointLight.position.set(POINT_POSITION.x, POINT_POSITION.y, POINT_POSITION.z)
 
-// Engines
-const engineGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.5)
-const engineMat = new THREE.MeshPhongMaterial({ color: 0x666666 })
-const leftEngine = new THREE.Mesh(engineGeo, engineMat)
-leftEngine.rotation.x = Math.PI / 2
-leftEngine.position.set(-0.6, 0, 0.4)
-player.add(leftEngine)
+    return { ambientLight, pointLight }
+}
 
-const rightEngine = new THREE.Mesh(engineGeo, engineMat)
-rightEngine.rotation.x = Math.PI / 2
-rightEngine.position.set(0.6, 0, 0.4)
-player.add(rightEngine)
+const { ambientLight, pointLight } = createLighting()
+scene.add(ambientLight)
+scene.add(pointLight)
 
-player.position.y = 0.5
+// ============================================================
+//                    PLAYER (SPACESHIP)
+// ============================================================
+function createPlayer() {
+    const START_Y = 0.5
+
+    const player = new THREE.Group()
+
+    // Badan utama (Fuselage)
+    const fuselage = new THREE.Mesh(
+        new THREE.ConeGeometry(0.2, 1.5, 32),
+        new THREE.MeshPhongMaterial({ color: 0xdddddd, shininess: 100 })
+    )
+    fuselage.rotation.x = -Math.PI / 2
+    player.add(fuselage)
+
+    // Kokpit (Cockpit)
+    const cockpit = new THREE.Mesh(
+        new THREE.BoxGeometry(0.3, 0.3, 0.5),
+        new THREE.MeshPhongMaterial({ 
+            color: 0x88ccff, 
+            transparent: true, 
+            opacity: 0.8 
+        })
+    )
+    cockpit.position.set(0, 0.2, -0.2)
+    player.add(cockpit)
+
+    // Sayap (Wings)
+    const wings = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.1, 0.5),
+        new THREE.MeshPhongMaterial({ color: 0xff3333 })
+    )
+    wings.position.set(0, 0, 0.2)
+    player.add(wings)
+
+    // Mesin kiri & kanan (Engines)
+    const engineGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5)
+    const engineMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 })
+
+    const leftEngine = new THREE.Mesh(engineGeometry, engineMaterial)
+    leftEngine.rotation.x = Math.PI / 2
+    leftEngine.position.set(-0.6, 0, 0.4)
+    player.add(leftEngine)
+
+    const rightEngine = new THREE.Mesh(engineGeometry, engineMaterial)
+    rightEngine.rotation.x = Math.PI / 2
+    rightEngine.position.set(0.6, 0, 0.4)
+    player.add(rightEngine)
+
+    // Posisi awal player
+    player.position.y = START_Y
+
+    return player
+}
+
+const player = createPlayer()
 scene.add(player)
 
-// ================= LIGHT =================
-scene.add(new THREE.AmbientLight(0xffffff, 0.5))
-const light = new THREE.PointLight(0xffffff, 1)
-light.position.set(5, 5, 5)
-scene.add(light)
+// ============================================================
+//                    GAME STATE (Status Game)
+// ============================================================
+const gameState = {
+    obstacles: [],
+    isRunning: false,
+    score: 0,
+    obstacleTimer: 0,
+    highScore: parseInt(localStorage.getItem('highScore')) || 0
+}
 
-// ================= GAME VAR =================
-let obstacles = []
-let running = false
-let score = 0
-let obstacleTimer = 0
+// Tampilkan high score saat halaman dimuat
+document.getElementById('highScore').textContent = gameState.highScore
 
-let highScore = localStorage.getItem('highScore') || 0
-document.getElementById('highScore').textContent = highScore
-
-// ================= SPAWN OBSTACLE =================
+// ============================================================
+//                    OBSTACLE FUNCTIONS
+// ============================================================
 function spawnObstacle() {
-    const obs = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+    const SIZE = 0.8
+    const SPAWN_RANGE_X = 8
+    const SPAWN_Y = 0.4
+    const SPAWN_Z = -10
+
+    const obstacle = new THREE.Mesh(
+        new THREE.BoxGeometry(SIZE, SIZE, SIZE),
         new THREE.MeshStandardMaterial({ color: 0xff3333 })
     )
 
-    obs.position.set(
-        (Math.random() - 0.5) * 8,
-        0.4,
-        -10
+    obstacle.position.set(
+        (Math.random() - 0.5) * SPAWN_RANGE_X,
+        SPAWN_Y,
+        SPAWN_Z
     )
 
-    scene.add(obs)
-    obstacles.push(obs)
+    scene.add(obstacle)
+    gameState.obstacles.push(obstacle)
 }
 
-// ================= KEYBOARD =================
-window.addEventListener('keydown', e => {
-    if (!running) return
+function updateObstacles() {
+    const SPEED = 0.4
+    const COLLISION_DISTANCE = 0.8
+    const REMOVE_Z = 5
 
-    if (e.key === 'a') player.position.x -= 0.3
-    if (e.key === 'd') player.position.x += 0.3
-    if (e.key === 'w') player.position.z -= 0.3
-    if (e.key === 's') player.position.z += 0.3
-})
+    for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+        const obstacle = gameState.obstacles[i]
+        
+        // Gerakkan obstacle ke arah player
+        obstacle.position.z += SPEED
 
-// ================= BUTTON =================
-document.getElementById('startBtn').onclick = () => {
-    resetGame()
-    running = true
-}
-
-document.getElementById('stopBtn').onclick = () => {
-    running = false
-}
-
-// ================= GAME LOOP =================
-function animate() {
-    requestAnimationFrame(animate)
-
-    if (running) {
-        score++
-        document.getElementById('score').textContent = score
-
-        obstacleTimer++
-        if (obstacleTimer > 60) {
-            spawnObstacle()
-            obstacleTimer = 0
+        // Cek tabrakan dengan player
+        if (obstacle.position.distanceTo(player.position) < COLLISION_DISTANCE) {
+            gameOver()
+            return
         }
 
-        updateBackground()
-
-        for (let i = 0; i < obstacles.length; i++) {
-            const obs = obstacles[i]
-            obs.position.z += 0.4 // Lebih cepat
-
-            if (obs.position.distanceTo(player.position) < 0.8) {
-                gameOver()
-            }
-
-            if (obs.position.z > 5) {
-                scene.remove(obs)
-                obstacles.splice(i, 1)
-                i--
-            }
+        // Hapus obstacle yang sudah melewati player
+        if (obstacle.position.z > REMOVE_Z) {
+            scene.remove(obstacle)
+            gameState.obstacles.splice(i, 1)
         }
     }
-
-    renderer.render(scene, camera)
 }
 
-animate()
-
-// ================= GAME OVER =================
-function gameOver() {
-    running = false
-
-    if (score > highScore) {
-        highScore = score
-        localStorage.setItem('highScore', highScore)
-        document.getElementById('highScore').textContent = highScore
-    }
-
-    alert('Game Over!')
+function clearAllObstacles() {
+    gameState.obstacles.forEach(obstacle => scene.remove(obstacle))
+    gameState.obstacles = []
 }
 
-// ================= RESET =================
-function resetGame() {
-    obstacles.forEach(o => scene.remove(o))
-    obstacles = []
-    score = 0
-    document.getElementById('score').textContent = 0
-    player.position.set(0, 0.5, 0)
-
-    // Clear radar
-    const radar = document.getElementById('radar')
-    while (radar.firstChild) {
-        radar.removeChild(radar.firstChild)
-    }
-}
-
-// ================= RADAR =================
+// ============================================================
+//                    RADAR FUNCTIONS
+// ============================================================
 function updateRadar() {
+    const RANGE_X = 12
+    const RANGE_Z = 25
+    const OFFSET_X = 6
+    const OFFSET_Z = 20
+
     const radar = document.getElementById('radar')
-    // Reset radar content (simple approach: clear and redraw)
-    // Optimization: Pool elements instead of clear/redraw if lagging, but for < 50 items it's fine
     radar.innerHTML = ''
 
-    // Add player blip (center)
+    // Blip untuk player (di tengah-bawah radar)
     const playerBlip = document.createElement('div')
     playerBlip.className = 'radar-blip player-blip'
     playerBlip.style.left = '50%'
-    playerBlip.style.top = '80%' // Player is near bottom of radar usually (forward view)
+    playerBlip.style.top = '80%'
     radar.appendChild(playerBlip)
 
-    // Add obstacles
-    obstacles.forEach(obs => {
-        // Map 3D coordinates (x: -4 to 4, z: -10 to 5) to Radar (0% to 100%)
-        // Radar range: X +/- 6, Z -20 to +5
+    // Blip untuk setiap obstacle
+    gameState.obstacles.forEach(obstacle => {
+        // Konversi koordinat 3D ke posisi radar (0% - 100%)
+        const radarX = (obstacle.position.x + OFFSET_X) / RANGE_X * 100
+        const radarZ = (obstacle.position.z + OFFSET_Z) / RANGE_Z * 100
 
-        const rangeX = 12 // -6 to 6
-        const rangeZ = 25 // -20 to 5
-
-        let rx = (obs.position.x + 6) / rangeX * 100
-        let rz = (obs.position.z + 20) / rangeZ * 100
-
-        // Invert Z because screen Y is down, but 3D Z increases towards camera
-        // Actually, Z increases towards camera (+5 is behind player). -10 is far.
-        // Screen Top (0%) should be far Z (-20). Screen Bottom (100%) should be near Z (+5).
-
-        rz = (obs.position.z + 20) / 25 * 100;
-
-        if (rx >= 0 && rx <= 100 && rz >= 0 && rz <= 100) {
+        // Hanya tampilkan jika dalam jangkauan radar
+        if (radarX >= 0 && radarX <= 100 && radarZ >= 0 && radarZ <= 100) {
             const blip = document.createElement('div')
             blip.className = 'radar-blip'
-            blip.style.left = rx + '%'
-            blip.style.top = rz + '%'
+            blip.style.left = `${radarX}%`
+            blip.style.top = `${radarZ}%`
             radar.appendChild(blip)
         }
     })
 }
 
-// ================= RESIZE =================
-window.addEventListener('resize', () => {
+function clearRadar() {
+    const radar = document.getElementById('radar')
+    radar.innerHTML = ''
+}
+
+// ============================================================
+//                    GAME CONTROL FUNCTIONS
+// ============================================================
+function startGame() {
+    resetGame()
+    gameState.isRunning = true
+}
+
+function stopGame() {
+    gameState.isRunning = false
+}
+
+function resetGame() {
+    const START_Y = 0.5
+
+    clearAllObstacles()
+    clearRadar()
+    
+    gameState.score = 0
+    gameState.obstacleTimer = 0
+    
+    document.getElementById('score').textContent = 0
+    player.position.set(0, START_Y, 0)
+}
+
+function gameOver() {
+    gameState.isRunning = false
+
+    // Update high score jika perlu
+    if (gameState.score > gameState.highScore) {
+        gameState.highScore = gameState.score
+        localStorage.setItem('highScore', gameState.highScore)
+        document.getElementById('highScore').textContent = gameState.highScore
+    }
+
+    alert('Game Over!')
+}
+
+// ============================================================
+//                    INPUT HANDLERS
+// ============================================================
+function handleKeyDown(event) {
+    const MOVE_SPEED = 0.3
+
+    if (!gameState.isRunning) return
+
+    const key = event.key.toLowerCase()
+    
+    switch (key) {
+        case 'a':
+        case 'arrowleft':
+            player.position.x -= MOVE_SPEED
+            break
+        case 'd':
+        case 'arrowright':
+            player.position.x += MOVE_SPEED
+            break
+        case 'w':
+        case 'arrowup':
+            player.position.z -= MOVE_SPEED
+            break
+        case 's':
+        case 'arrowdown':
+            player.position.z += MOVE_SPEED
+            break
+    }
+}
+
+function handleResize() {
     camera.aspect = window.innerWidth / window.innerHeight
     camera.updateProjectionMatrix()
     renderer.setSize(window.innerWidth, window.innerHeight)
-})
+}
+
+// ============================================================
+//                    EVENT LISTENERS
+// ============================================================
+window.addEventListener('keydown', handleKeyDown)
+window.addEventListener('resize', handleResize)
+
+document.getElementById('startBtn').addEventListener('click', startGame)
+document.getElementById('stopBtn').addEventListener('click', stopGame)
+
+// ============================================================
+//                    MAIN GAME LOOP
+// ============================================================
+function animate() {
+    const SPAWN_INTERVAL = 60
+
+    requestAnimationFrame(animate)
+
+    if (gameState.isRunning) {
+        // Update score
+        gameState.score++
+        document.getElementById('score').textContent = gameState.score
+
+        // Spawn obstacles secara berkala
+        gameState.obstacleTimer++
+        if (gameState.obstacleTimer >= SPAWN_INTERVAL) {
+            spawnObstacle()
+            gameState.obstacleTimer = 0
+        }
+
+        // Update game elements
+        updateBackground()
+        updateObstacles()
+        updateRadar()
+    }
+
+    // Render scene
+    renderer.render(scene, camera)
+}
+
+// Mulai game loop
+animate()
