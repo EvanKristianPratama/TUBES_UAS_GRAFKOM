@@ -182,11 +182,11 @@ InputHandler.init();
 // Inisialisasi Firebase dan load high score dari cloud
 initFirebase();
 
-// Load high score dari Firebase saat game dimulai
-loadHighScoreFromCloud();
-
-// Load leaderboard
-loadLeaderboard();
+// Load high score dan leaderboard dengan delay kecil
+setTimeout(function() {
+    loadHighScoreFromCloud();
+    loadLeaderboard();
+}, 500);
 
 // Listen perubahan high score secara realtime
 listenToHighScore(function(highScoreData) {
@@ -201,13 +201,20 @@ listenToHighScore(function(highScoreData) {
 
 // Fungsi untuk load high score dari cloud
 async function loadHighScoreFromCloud() {
-    var highScoreData = await getHighScoreFromFirebase();
-    if (highScoreData) {
-        GameState.highScore = highScoreData.score;
-        GameState.highScoreName = highScoreData.name;
-        UIManager.updateHighScore(highScoreData.score);
-        UIManager.updateBestPlayerName(highScoreData.name);
-        console.log('☁️ High score dari cloud:', highScoreData.score, 'by', highScoreData.name);
+    try {
+        var timeoutPromise = new Promise(function(_, reject) {
+            setTimeout(function() { reject(new Error('Timeout')); }, 3000);
+        });
+        var highScoreData = await Promise.race([getHighScoreFromFirebase(), timeoutPromise]);
+        if (highScoreData) {
+            GameState.highScore = highScoreData.score;
+            GameState.highScoreName = highScoreData.name;
+            UIManager.updateHighScore(highScoreData.score);
+            UIManager.updateBestPlayerName(highScoreData.name);
+            console.log('☁️ High score dari cloud:', highScoreData.score, 'by', highScoreData.name);
+        }
+    } catch (e) {
+        console.warn('⚠️ Gagal load high score:', e.message);
     }
 }
 
@@ -219,9 +226,14 @@ async function loadLeaderboard() {
     if (!leaderboardList) return;
     
     try {
-        var scores = await getLeaderboard(10);
+        // Timeout 3 detik
+        var timeoutPromise = new Promise(function(_, reject) {
+            setTimeout(function() { reject(new Error('Timeout')); }, 3000);
+        });
         
-        if (scores.length === 0) {
+        var scores = await Promise.race([getLeaderboard(10), timeoutPromise]);
+        
+        if (!scores || scores.length === 0) {
             leaderboardList.innerHTML = '<div class="leaderboard-empty">No scores yet.<br>Be the first!</div>';
             return;
         }
@@ -253,8 +265,8 @@ async function loadLeaderboard() {
         leaderboardList.innerHTML = html;
         console.log('🏆 Leaderboard loaded:', scores.length, 'scores');
     } catch (error) {
-        console.error('Failed to load leaderboard:', error);
-        leaderboardList.innerHTML = '<div class="leaderboard-empty">Failed to load</div>';
+        console.warn('⚠️ Leaderboard timeout/error:', error.message);
+        leaderboardList.innerHTML = '<div class="leaderboard-empty">Offline mode</div>';
     }
 }
 
