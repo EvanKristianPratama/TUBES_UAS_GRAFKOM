@@ -427,13 +427,130 @@ button {
   color: var(--primary);
 }
 
-.modal-btn.share {
-  background: linear-gradient(135deg, #25D366, #128C7E);
-  color: white;
-  box-shadow: 0 5px 30px rgba(37, 211, 102, 0.4);
+/* ============================================================
+   LEADERBOARD - Top 10 Players
+   ============================================================ */
+.leaderboard {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 15px;
+  padding: 20px;
+  width: 280px;
+  pointer-events: auto;
 }
 
-.modal-btn.share:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 50px rgba(37, 211, 102, 0.6);
+.leaderboard-title {
+  font-size: 0.85rem;
+  color: var(--primary);
+  text-align: center;
+  letter-spacing: 2px;
+  margin-bottom: 15px;
+  text-shadow: 0 0 10px var(--primary);
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.leaderboard-loading {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  padding: 20px;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.leaderboard-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-item.top-1 {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.05));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.leaderboard-item.top-2 {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.05));
+  border: 1px solid rgba(192, 192, 192, 0.3);
+}
+
+.leaderboard-item.top-3 {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(205, 127, 50, 0.05));
+  border: 1px solid rgba(205, 127, 50, 0.3);
+}
+
+.leaderboard-rank {
+  font-size: 0.9rem;
+  font-weight: 700;
+  width: 25px;
+  text-align: center;
+}
+
+.leaderboard-item.top-1 .leaderboard-rank { color: #ffd700; }
+.leaderboard-item.top-2 .leaderboard-rank { color: #c0c0c0; }
+.leaderboard-item.top-3 .leaderboard-rank { color: #cd7f32; }
+
+.leaderboard-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.leaderboard-name {
+  font-size: 0.8rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboard-level {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.leaderboard-score {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-shadow: 0 0 10px var(--primary);
+}
+
+.leaderboard-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  padding: 30px 10px;
+}
+
+/* Hide leaderboard when playing */
+.playing .leaderboard {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(-20px);
+  transition: all 0.3s ease;
+}
+
+/* Responsive - hide on small screens */
+@media (max-width: 900px) {
+  .leaderboard {
+    display: none;
+  }
 }
