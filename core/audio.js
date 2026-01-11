@@ -13,7 +13,8 @@ export class AudioManager {
     // Set path ke file musik
     // PENTING: Ganti 'blinding-light.mp3' dengan file musik Anda
     // File musik harus disimpan di folder: assets/
-    this.backgroundMusic.src = './assets/blinding-light.mp3';
+    // Path absolut untuk Vercel deployment
+    this.backgroundMusic.src = '/assets/blinding-light.mp3';
     
     this.isPlaying = true; // Default ON
   }
@@ -25,6 +26,7 @@ export class AudioManager {
     if (!this.isPlaying) {
       this.backgroundMusic.play().catch(error => {
         console.warn('Could not autoplay music:', error);
+        // Coba lagi saat user interact
       });
       this.isPlaying = true;
     }

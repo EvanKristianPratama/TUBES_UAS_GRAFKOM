@@ -151,6 +151,15 @@ export var UIManager = {
     },
     
     // --------------------------------------------------------
+    // METHOD: UPDATE HIGH SCORE SAJA
+    // --------------------------------------------------------
+    updateHighScore: function(score) {
+        if (this.highScoreElement) {
+            this.highScoreElement.textContent = score;
+        }
+    },
+    
+    // --------------------------------------------------------
     // METHOD: SEMBUNYIKAN TOMBOL KONTROL
     // --------------------------------------------------------
     // Dipanggil saat game dimulai
