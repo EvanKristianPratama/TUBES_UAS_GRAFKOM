@@ -20,6 +20,7 @@ import { ObstacleManager } from './modules/obstacle.js'; // Manager meteor
 import { setupBackground, updateBackground } from './modules/background.js'; // Latar belakang
 import { GameState, UIManager, InputHandler } from './core/game.js'; // Logic game
 import { ExplosionManager } from './modules/explosion.js';
+import { AudioManager } from './core/audio.js'; // Audio/Music manager
 
 // Import Firebase untuk menyimpan skor online
 import { 
@@ -180,6 +181,18 @@ UIManager.init();
 // Setup input handler (kontrol keyboard)
 InputHandler.init();
 
+// Inisialisasi Audio Manager (musik background)
+let audioManager = new AudioManager();
+
+// Auto-play musik langsung (default ON)
+audioManager.playBackgroundMusic();
+
+// Fallback: jika browser block autoplay, play saat user interact
+document.addEventListener('click', function enableAudio() {
+    audioManager.playBackgroundMusic();
+    document.removeEventListener('click', enableAudio);
+}, { once: true });
+
 // ------------------------------------------------------------
 // INISIALISASI FIREBASE
 // ------------------------------------------------------------
@@ -327,6 +340,9 @@ function startGame() {
     
     // Tambah class playing untuk hide leaderboard
     document.getElementById('hud').classList.add('playing');
+    
+    // Mulai musik background
+    audioManager.playBackgroundMusic();
     
     // Tampilkan pesan di console (untuk debugging)
     console.log('Game dimulai! Player:', playerName);
@@ -585,6 +601,33 @@ let stopButton = document.getElementById('stopBtn');
 if (stopButton) {
     stopButton.addEventListener('click', function() {
         stopGame();
+    });
+}
+
+// ------------------------------------------------------------
+// EVENT: TOMBOL MUSIK
+// ------------------------------------------------------------
+let musicBtn = document.getElementById('musicBtn');
+if (musicBtn) {
+    musicBtn.addEventListener('click', function() {
+        let isPlaying = audioManager.toggleMusic();
+        // Toggle class active
+        if (isPlaying) {
+            musicBtn.classList.add('active');
+        } else {
+            musicBtn.classList.remove('active');
+        }
+    });
+}
+
+// ------------------------------------------------------------
+// EVENT: VOLUME SLIDER
+// ------------------------------------------------------------
+let volumeSlider = document.getElementById('volumeSlider');
+if (volumeSlider) {
+    volumeSlider.addEventListener('input', function() {
+        let volume = volumeSlider.value / 100;
+        audioManager.setVolume(volume);
     });
 }
 
