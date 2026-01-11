@@ -182,16 +182,8 @@ UIManager.init();
 InputHandler.init();
 
 // Inisialisasi Audio Manager (musik background)
+// Musik akan otomatis play saat user interact pertama kali (browser policy)
 let audioManager = new AudioManager();
-
-// Auto-play musik langsung (default ON)
-audioManager.playBackgroundMusic();
-
-// Fallback: jika browser block autoplay, play saat user interact
-document.addEventListener('click', function enableAudio() {
-    audioManager.playBackgroundMusic();
-    document.removeEventListener('click', enableAudio);
-}, { once: true });
 
 // ------------------------------------------------------------
 // INISIALISASI FIREBASE
@@ -608,26 +600,43 @@ if (stopButton) {
 // EVENT: TOMBOL MUSIK
 // ------------------------------------------------------------
 let musicBtn = document.getElementById('musicBtn');
+let volumeSlider = document.getElementById('volumeSlider');
+let musicControl = document.querySelector('.music-control');
+
+function syncAudioUI() {
+    if (!musicControl) return;
+
+    let enabled = musicControl.classList.contains('active');
+    if (volumeSlider) {
+        volumeSlider.disabled = !enabled;
+        volumeSlider.style.setProperty('--vol', volumeSlider.value + '%');
+    }
+}
+
+// init volume dari slider
+if (volumeSlider) {
+    audioManager.setVolume(volumeSlider.value / 100);
+}
+syncAudioUI();
+
 if (musicBtn) {
     musicBtn.addEventListener('click', function() {
-        let isPlaying = audioManager.toggleMusic();
-        // Toggle class active
-        if (isPlaying) {
-            musicBtn.classList.add('active');
-        } else {
-            musicBtn.classList.remove('active');
+        let enabled = audioManager.toggleMusic();
+        if (musicControl) {
+            musicControl.classList.toggle('active', enabled);
         }
+        syncAudioUI();
     });
 }
 
 // ------------------------------------------------------------
 // EVENT: VOLUME SLIDER
 // ------------------------------------------------------------
-let volumeSlider = document.getElementById('volumeSlider');
 if (volumeSlider) {
     volumeSlider.addEventListener('input', function() {
         let volume = volumeSlider.value / 100;
         audioManager.setVolume(volume);
+        volumeSlider.style.setProperty('--vol', volumeSlider.value + '%');
     });
 }
 

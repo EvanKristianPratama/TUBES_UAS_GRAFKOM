@@ -3,3 +3,8 @@ node_modules/
 *.log
 .vscode/
 dist/
+
+# Audio assets (keep local, do not commit)
+public/assets/*.mp3
+public/assets/*.wav
+public/assets/*.ogg
