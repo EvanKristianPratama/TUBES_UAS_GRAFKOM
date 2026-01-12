@@ -179,6 +179,22 @@ export var UIManager = {
             // CSS display: flex = elemen terlihat dengan flexbox layout
             this.controlsElement.style.display = 'flex';
         }
+    },
+    
+    // --------------------------------------------------------
+    // METHOD: UPDATE TAMPILAN AMMO
+    // --------------------------------------------------------
+    updateAmmo: function(ammoInfo) {
+        var ammoElement = document.getElementById('ammoDisplay');
+        if (!ammoElement) return;
+        
+        if (ammoInfo.isReloading) {
+            ammoElement.textContent = 'RELOADING...';
+            ammoElement.classList.add('reloading');
+        } else {
+            ammoElement.textContent = 'AMMO: ' + ammoInfo.current + '/' + ammoInfo.max;
+            ammoElement.classList.remove('reloading');
+        }
     }
 };
 
@@ -195,7 +211,9 @@ export var InputHandler = {
         left: false,
         right: false,
         up: false,
-        down: false
+        down: false,
+        shoot: false,
+        reload: false
     },
     
     // --------------------------------------------------------
@@ -225,6 +243,12 @@ export var InputHandler = {
             if (event.key === 'ArrowDown' || event.key === 's' || event.key === 'S') {
                 self.keys.down = true;
             }
+            if (event.key === ' ') {
+                self.keys.shoot = true;
+            }
+            if (event.key === 'r' || event.key === 'R') {
+                self.keys.reload = true;
+            }
         });
         
         // ====================================================
@@ -244,6 +268,12 @@ export var InputHandler = {
             }
             if (event.key === 'ArrowDown' || event.key === 's' || event.key === 'S') {
                 self.keys.down = false;
+            }
+            if (event.key === ' ') {
+                self.keys.shoot = false;
+            }
+            if (event.key === 'r' || event.key === 'R') {
+                self.keys.reload = false;
             }
         });
     },
