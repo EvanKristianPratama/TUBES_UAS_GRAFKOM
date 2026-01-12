@@ -16,8 +16,7 @@ import * as THREE from 'three';
 // ------------------------------------------------------------
 // Batas pergerakan pesawat agar tidak keluar layar
 var BOUNDARY_X = 4;   // Batas kiri-kanan (sumbu X)
-var BOUNDARY_Y = 2;   // Batas atas-bawah (sumbu Y)
-var BOUNDARY_Z = 3;   // Batas depan-belakang (sumbu Z)
+var BOUNDARY_Y = 2;   // Batas atas-bawah (sumbu Y)   // Batas depan-belakang (sumbu Z)
 var MOVE_SPEED = 0.1; // Kecepatan gerak pesawat
 
 // ------------------------------------------------------------
@@ -114,7 +113,7 @@ export class Spaceship {
         // Sayap kanan
         var wingRight = new THREE.Mesh(wingGeo, wingMat);
         wingRight.rotation.x = -Math.PI / 2;
-        wingRight.position.set(0.1, 0, 0.1);
+        wingRight.position.set(0.1, 0, 0.7);
         ship.add(wingRight);
         
         // Sayap kiri (mirror)

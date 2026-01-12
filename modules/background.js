@@ -19,7 +19,7 @@ var stars = [];
 // Kecepatan gerak bintang
 var starSpeed = 0.1;
 
-// Referensi ke scene (akan diisi saat setup)
+// set up ruang kosong
 var sceneRef = null;
 
 // ------------------------------------------------------------

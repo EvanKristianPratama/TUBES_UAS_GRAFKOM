@@ -10,10 +10,8 @@
 // ------------------------------------------------------------
 // Import THREE.js untuk membuat grafik 3D
 import * as THREE from 'three';
-
 // Import OrbitControls untuk kontrol kamera (geser, zoom, rotasi)
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-
 // Import modul yang kita buat sendiri
 import { Spaceship } from './modules/spaceship.js';      // Pesawat pemain
 import { ObstacleManager } from './modules/obstacle.js'; // Manager meteor
@@ -21,17 +19,8 @@ import { setupBackground, updateBackground } from './modules/background.js'; // 
 import { GameState, UIManager, InputHandler } from './core/game.js'; // Logic game
 import { ExplosionManager } from './modules/explosion.js';
 import { AudioManager } from './core/audio.js'; // Audio/Music manager
-
 // Import Firebase untuk menyimpan skor online
-import { 
-    initFirebase, 
-    saveScoreToFirebase, 
-    getHighScoreFromFirebase,
-    getLeaderboard,
-    isNewHighScore,
-    listenToHighScore 
-} from './core/firebase.js';
-
+import { initFirebase, saveScoreToFirebase, getHighScoreFromFirebase, getLeaderboard, isNewHighScore, listenToHighScore } from './core/firebase.js';
 // ------------------------------------------------------------
 // SETUP SCENE (TEMPAT 3D)
 // ------------------------------------------------------------

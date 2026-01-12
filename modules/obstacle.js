@@ -126,7 +126,7 @@ export class ObstacleManager {
             this.spawnInterval -= 2;
             this.difficultyTimer = 0;
         }
-        
+        // AI Refrence
         // Loop dari belakang ke depan (untuk menghapus dengan aman)
         // Menggunakan reverse loop agar index tidak kacau saat splice
         for (var i = this.obstacles.length - 1; i >= 0; i--) {
@@ -160,6 +160,7 @@ export class ObstacleManager {
         }
     }
     
+    // AI Refrence
     // --------------------------------------------------------
     // FUNGSI: CEK TABRAKAN DENGAN PESAWAT
     // --------------------------------------------------------
