@@ -18,6 +18,7 @@ import { ObstacleManager } from './modules/obstacle.js'; // Manager meteor
 import { setupBackground, updateBackground } from './modules/background.js'; // Latar belakang
 import { GameState, UIManager, InputHandler } from './core/game.js'; // Logic game
 import { ExplosionManager } from './modules/explosion.js';
+import { ProjectileManager } from './modules/projectile.js'; // Sistem tembakan
 import { AudioManager } from './core/audio.js'; // Audio/Music manager
 // Import Firebase untuk menyimpan skor online
 import { initFirebase, saveScoreToFirebase, getHighScoreFromFirebase, getLeaderboard, isNewHighScore, listenToHighScore } from './core/firebase.js';
@@ -157,6 +158,9 @@ let obstacleManager = new ObstacleManager(scene);
 
 // Explosion manager (efek ledakan)
 let explosionManager = new ExplosionManager(scene);
+
+// Projectile manager (sistem tembakan)
+let projectileManager = new ProjectileManager(scene);
 
 // Setup background (bintang-bintang)
 setupBackground(scene);
@@ -308,6 +312,9 @@ function startGame() {
     // Hapus semua meteor yang ada
     obstacleManager.clearAll();
     
+    // Reset peluru
+    projectileManager.clearAll();
+    
     // Reset posisi pesawat ke tengah
     spaceship.resetPosition();
     // Pastikan pesawat terlihat (jika sebelumnya disembunyikan oleh ledakan)
@@ -318,6 +325,10 @@ function startGame() {
     
     // Sembunyikan tombol start/stop saat bermain
     UIManager.hideControls();
+    
+    // Tampilkan ammo display
+    let ammoEl = document.querySelector('.score-item.ammo');
+    if (ammoEl) ammoEl.classList.remove('hidden');
     
     // Tambah class playing untuk hide leaderboard
     document.getElementById('hud').classList.add('playing');
@@ -341,6 +352,10 @@ function stopGame() {
     
     // Tampilkan tombol kembali
     UIManager.showControls();
+    
+    // Sembunyikan ammo display
+    let ammoEl = document.querySelector('.score-item.ammo');
+    if (ammoEl) ammoEl.classList.add('hidden');
     
     // Hapus class playing untuk show leaderboard
     document.getElementById('hud').classList.remove('playing');
@@ -502,6 +517,43 @@ function animate() {
         if (InputHandler.isPressed('down')) {
             spaceship.moveDown();    // Gerak bawah (maju)
         }
+        
+        // Tembak (Spasi)
+        if (InputHandler.isPressed('shoot')) {
+            let shipPos = spaceship.getPosition();
+            projectileManager.shoot(shipPos);
+        }
+        
+        // Reload (R)
+        if (InputHandler.isPressed('reload')) {
+            projectileManager.reload();
+        }
+        
+        // ----------------------------------------------------
+        // UPDATE PELURU & CEK COLLISION PELURU-METEOR
+        // ----------------------------------------------------
+        projectileManager.update();
+        
+        // Cek peluru kena meteor
+        let hitIndices = projectileManager.checkCollision(obstacleManager.obstacles);
+        
+        // Hancurkan meteor yang kena (dari belakang biar aman splice)
+        hitIndices.sort((a, b) => b - a);
+        for (let idx of hitIndices) {
+            let meteor = obstacleManager.obstacles[idx];
+            // Spawn ledakan kecil di posisi meteor
+            explosionManager.spawn(meteor.position, { count: 15, duration: 0.5 });
+            // Hapus meteor
+            obstacleManager.scene.remove(meteor);
+            meteor.geometry.dispose();
+            meteor.material.dispose();
+            obstacleManager.obstacles.splice(idx, 1);
+            // Bonus skor
+            GameState.addScore(50);
+        }
+        
+        // Update UI ammo
+        UIManager.updateAmmo(projectileManager.getAmmoInfo());
         
         // ----------------------------------------------------
         // CEK TABRAKAN (COLLISION DETECTION)
