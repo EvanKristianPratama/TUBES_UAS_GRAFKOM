@@ -17,6 +17,11 @@
   box-sizing: border-box;
 }
 
+/* Global hidden class */
+.hidden {
+  display: none !important;
+}
+
 body {
   background: var(--bg);
   overflow: hidden;
@@ -79,6 +84,31 @@ canvas {
 .score-item.best .value {
   color: var(--accent);
   text-shadow: 0 0 20px var(--accent);
+}
+
+/* Ammo Display */
+.score-item.ammo {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--primary);
+}
+
+.ammo-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-shadow: 0 0 10px var(--primary);
+  letter-spacing: 2px;
+}
+
+.ammo-value.reloading {
+  color: #ffaa00;
+  text-shadow: 0 0 10px #ffaa00;
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .player-name {
